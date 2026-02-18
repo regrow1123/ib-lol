@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ib-lol</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a1a; color: #e0e0e0; font-family: 'Courier New', monospace; font-size: 14px; }
+#game { max-width: 900px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; color: #f0c040; margin-bottom: 10px; font-size: 24px; }
+.subtitle { text-align: center; color: #888; margin-bottom: 20px; font-size: 12px; }
+
+/* Lane display */
+#lane-display { background: #111; border: 1px solid #333; padding: 15px; margin-bottom: 15px; border-radius: 4px; white-space: pre; line-height: 1.6; font-size: 13px; overflow-x: auto; }
+
+/* Stats panels */
+.stats-row { display: flex; gap: 10px; margin-bottom: 15px; }
+.stat-panel { flex: 1; background: #111; border: 1px solid #333; padding: 10px; border-radius: 4px; font-size: 12px; line-height: 1.8; }
+.stat-panel.player { border-color: #4488ff; }
+.stat-panel.enemy { border-color: #ff4444; }
+.stat-panel h3 { margin-bottom: 5px; }
+.hp { color: #44ff44; }
+.mp { color: #4488ff; }
+.dmg { color: #ff6644; }
+.gold { color: #f0c040; }
+.stun { color: #ff44ff; }
+.cd { color: #888; }
+.ready { color: #44ff44; }
+
+/* Log */
+#log { background: #0a0a0a; border: 1px solid #333; padding: 10px; height: 200px; overflow-y: auto; margin-bottom: 15px; border-radius: 4px; font-size: 12px; line-height: 1.6; }
+.log-turn { color: #f0c040; }
+.log-dmg { color: #ff6644; }
+.log-heal { color: #44ff44; }
+.log-info { color: #88aaff; }
+.log-kill { color: #ff44ff; }
+
+/* Actions */
+#actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+#actions button { background: #222; color: #e0e0e0; border: 1px solid #555; padding: 8px 16px; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 13px; transition: all 0.1s; }
+#actions button:hover:not(:disabled) { background: #333; border-color: #888; }
+#actions button:disabled { opacity: 0.3; cursor: not-allowed; }
+#actions button.move { border-color: #44aa44; }
+#actions button.attack { border-color: #ff6644; }
+#actions button.skill-q { border-color: #ff8800; }
+#actions button.skill-w { border-color: #ff4444; }
+#actions button.skill-e { border-color: #44aaff; }
+#actions button.skill-r { border-color: #ff44ff; }
+
+/* Target selection */
+#target-select { background: #1a1a0a; border: 1px solid #f0c040; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: none; }
+#target-select h4 { color: #f0c040; margin-bottom: 8px; }
+#target-select button { background: #222; color: #e0e0e0; border: 1px solid #555; padding: 6px 12px; margin: 3px; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 12px; }
+#target-select button:hover { background: #333; }
+
+/* Game over */
+#game-over { display: none; text-align: center; padding: 30px; background: #111; border: 2px solid #f0c040; border-radius: 8px; margin-top: 20px; }
+#game-over h2 { color: #f0c040; font-size: 28px; margin-bottom: 10px; }
+#game-over button { background: #f0c040; color: #000; border: none; padding: 10px 30px; font-size: 16px; cursor: pointer; border-radius: 4px; font-family: inherit; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div id="game">
+  <h1>⚔️ ib-lol ⚔️</h1>
+  <div class="subtitle">턴제 1v1 라인전 — Annie Mirror Match</div>
+  <div id="lane-display"></div>
+  <div class="stats-row">
+    <div class="stat-panel player" id="player-stats"></div>
+    <div class="stat-panel enemy" id="enemy-stats"></div>
+  </div>
+  <div id="target-select"><h4>🎯 타겟 선택</h4><div id="target-buttons"></div></div>
+  <div id="actions"></div>
+  <div id="log"></div>
+  <div id="game-over"><h2 id="game-over-text"></h2><button onclick="initGame()">다시 하기</button></div>
+</div>
+<script>
+// ============ GAME CONFIG ============
+const LANE_SIZE = 13; // 0..12
+const TOWER_HP = 1500;
+const TOWER_DMG = 80;
+const TOWER_RANGE = 2;
+const MINION_HP = 300;
+const MINION_DMG = 15;
+const MINION_GOLD = 20;
+const MINION_SPAWN_INTERVAL = 3; // every 3 turns
+const MINION_SPEED = 1;
+
+// Annie stats
+const ANNIE = {
+  name: 'Annie',
+  hp: 560, mp: 418, ad: 50, ap: 0, armor: 19, mr: 30,
+  attackRange: 1, // melee-ish in this grid (for auto: adjacent)
+  skills: {
+    passive: { name: '파이로매니아', desc: '스킬 4회 사용 시 다음 스킬 스턴', stacksNeeded: 4 },
+    q: { name: '붕괴', key: 'Q', desc: '타겟 지정 마법 데미지. 처치 시 마나 회복', damage: 80, manaCost: 60, cooldown: 0, range: 3, type: 'target' },
+    w: { name: '소각', key: 'W', desc: '전방 범위 마법 데미지', damage: 70, manaCost: 70, cooldown: 1, range: 2, aoe: true, type: 'direction' },
+    e: { name: '용융 보호막', key: 'E', desc: '보호막 획득 (40 + 0.4 AP)', shield: 40, shieldApRatio: 0.4, manaCost: 40, cooldown: 3, type: 'self' },
+    r: { name: '소환: 티버', key: 'R', desc: '범위 마법 데미지 + 티버 소환', damage: 150, manaCost: 100, cooldown: 8, range: 3, aoe: true, type: 'target', summon: true }
+  }
+};
+
+// ============ GAME STATE ============
+let state;
+
+function createChampion(template, team, pos) {
+  return {
+    type: 'champion',
+    team, name: template.name, pos,
+    maxHp: template.hp, hp: template.hp,
+    maxMp: template.mp, mp: template.mp,
+    ad: template.ad, ap: template.ap,
+    armor: template.armor, mr: template.mr,
+    attackRange: template.attackRange,
+    passiveStacks: 0,
+    shield: 0,
+    cooldowns: { q: 0, w: 0, e: 0, r: 0 },
+    tibbers: null,
+    level: 1, xp: 0, gold: 0,
+    alive: true, stunned: false
+  };
+}
+
+function createTower(team, pos) {
+  return { type: 'tower', team, pos, hp: TOWER_HP, maxHp: TOWER_HP, alive: true, ad: TOWER_DMG, range: TOWER_RANGE };
+}
+
+function createMinion(team, pos, id) {
+  return { type: 'minion', team, pos, hp: MINION_HP, maxHp: MINION_HP, ad: MINION_DMG, alive: true, id };
+}
+
+function initGame() {
+  let minionId = 0;
+  state = {
+    turn: 1,
+    player: createChampion(ANNIE, 'blue', 2),
+    enemy: createChampion(ANNIE, 'red', 10),
+    towers: [createTower('blue', 0), createTower('red', 12)],
+    minions: [],
+    tibbersList: [],
+    minionIdCounter: 0,
+    logs: [],
+    phase: 'action', // action | target
+    pendingSkill: null,
+    gameOver: false
+  };
+  document.getElementById('game-over').style.display = 'none';
+  spawnMinions();
+  render();
+}
+
+// ============ LOGGING ============
+function log(msg, cls = '') {
+  state.logs.push({ msg, cls });
+}
+
+// ============ DAMAGE CALC ============
+function calcDamage(rawDmg, type, target) {
+  if (type === 'magic') {
+    return Math.max(1, Math.floor(rawDmg * (100 / (100 + target.mr))));
+  } else {
+    return Math.max(1, Math.floor(rawDmg * (100 / (100 + (target.armor || 0)))));
+  }
+}
+
+function applyDamage(target, amount) {
+  if (target.shield && target.shield > 0) {
+    if (target.shield >= amount) {
+      target.shield -= amount;
+      return 0;
+    } else {
+      amount -= target.shield;
+      target.shield = 0;
+    }
+  }
+  target.hp = Math.max(0, target.hp - amount);
+  if (target.hp <= 0) {
+    target.alive = false;
+  }
+  return amount;
+}
+
+function distance(a, b) {
+  return Math.abs(a - b);
+}
+
+// ============ MINION SPAWNING ============
+function spawnMinions() {
+  if (state.turn % MINION_SPAWN_INTERVAL === 1 || state.turn === 1) {
+    state.minionIdCounter++;
+    state.minions.push(createMinion('blue', 1, 'B' + state.minionIdCounter));
+    state.minionIdCounter++;
+    state.minions.push(createMinion('red', 11, 'R' + state.minionIdCounter));
+    log('🏰 미니언이 생성되었습니다!', 'log-info');
+  }
+}
+
+// ============ SKILL EXECUTION ============
+function executeSkill(caster, skillKey, target) {
+  const skill = ANNIE.skills[skillKey];
+  if (caster.cooldowns[skillKey] > 0) return false;
+  if (caster.mp < skill.manaCost) return false;
+
+  caster.mp -= skill.manaCost;
+  caster.cooldowns[skillKey] = skill.cooldown;
+
+  // Passive stack
+  caster.passiveStacks++;
+  let willStun = false;
+  if (caster.passiveStacks >= ANNIE.skills.passive.stacksNeeded) {
+    willStun = true;
+    caster.passiveStacks = 0;
+  }
+
+  const casterLabel = caster.team === 'blue' ? '🔵' : '🔴';
+
+  if (skillKey === 'e') {
+    const shieldAmt = Math.floor(skill.shield + skill.shieldApRatio * caster.ap);
+    caster.shield += shieldAmt;
+    log(`${casterLabel} ${caster.name}이(가) E(${skill.name}) 사용! 보호막 +${shieldAmt}`, 'log-info');
+    return true;
+  }
+
+  if (!target || !target.alive) return false;
+  if (distance(caster.pos, target.pos) > skill.range) return false;
+
+  const rawDmg = skill.damage + caster.ap;
+  const dmg = calcDamage(rawDmg, 'magic', target);
+  applyDamage(target, dmg);
+
+  const targetLabel = target.team === 'blue' ? '🔵' : '🔴';
+  log(`${casterLabel} ${caster.name}이(가) ${skill.key}(${skill.name}) → ${targetLabel}${target.name || target.type}에게 ${dmg} 마법 피해!`, 'log-dmg');
+
+  if (willStun && target.type === 'champion') {
+    target.stunned = true;
+    log(`⚡ 파이로매니아! ${targetLabel}${target.name} 스턴!`, 'log-kill');
+  }
+
+  // Q kill refund
+  if (skillKey === 'q' && !target.alive) {
+    caster.mp = Math.min(caster.maxMp, caster.mp + skill.manaCost);
+    log(`💰 ${casterLabel} Q 처치! 마나 회복!`, 'log-heal');
+  }
+
+  // R summon tibbers
+  if (skillKey === 'r' && skill.summon && !caster.tibbers) {
+    const tibPos = target.pos;
+    const tib = { type: 'tibbers', team: caster.team, pos: tibPos, hp: 300, maxHp: 300, ad: 40, alive: true, owner: caster };
+    caster.tibbers = tib;
+    state.tibbersList.push(tib);
+    log(`🧸 ${casterLabel} 티버 소환!`, 'log-kill');
+  }
+
+  if (!target.alive) {
+    handleKill(caster, target);
+  }
+
+  return true;
+}
+
+function handleKill(killer, victim) {
+  const kLabel = killer.team === 'blue' ? '🔵' : '🔴';
+  if (victim.type === 'minion') {
+    killer.gold += MINION_GOLD;
+    log(`${kLabel} ${killer.name} 미니언 처치! +${MINION_GOLD}G`, 'log-kill');
+  } else if (victim.type === 'champion') {
+    killer.gold += 300;
+    log(`${kLabel} ${killer.name}이(가) 챔피언을 처치! +300G`, 'log-kill');
+  }
+}
+
+// ============ AUTO ATTACK ============
+function autoAttack(attacker, target) {
+  if (!target || !target.alive) return false;
+  const range = attacker.type === 'champion' ? 2 : 1;
+  if (distance(attacker.pos, target.pos) > range) return false;
+
+  const dmg = calcDamage(attacker.ad, 'physical', target);
+  applyDamage(target, dmg);
+
+  const aLabel = attacker.team === 'blue' ? '🔵' : '🔴';
+  const tLabel = target.team === 'blue' ? '🔵' : '🔴';
+  log(`${aLabel} ${attacker.name || attacker.type} → ${tLabel}${target.name || target.type}에게 ${dmg} 물리 피해`, 'log-dmg');
+
+  if (!target.alive) handleKill(attacker, target);
+  return true;
+}
+
+// ============ GET TARGETS ============
+function getEnemyTargets(unit) {
+  const enemyTeam = unit.team === 'blue' ? 'red' : 'blue';
+  let targets = [];
+  // Enemy champion
+  const ec = unit.team === 'blue' ? state.enemy : state.player;
+  if (ec.alive) targets.push(ec);
+  // Enemy minions
+  state.minions.filter(m => m.alive && m.team === enemyTeam).forEach(m => targets.push(m));
+  // Enemy tower
+  state.towers.filter(t => t.alive && t.team === enemyTeam).forEach(t => targets.push(t));
+  // Tibbers
+  state.tibbersList.filter(t => t.alive && t.team === enemyTeam).forEach(t => targets.push(t));
+  return targets;
+}
+
+function getTargetsInRange(unit, range) {
+  return getEnemyTargets(unit).filter(t => distance(unit.pos, t.pos) <= range);
+}
+
+function targetLabel(t) {
+  if (t.type === 'champion') return `${t.name} (HP:${t.hp})`;
+  if (t.type === 'minion') return `미니언${t.id} (HP:${t.hp})`;
+  if (t.type === 'tower') return `타워 (HP:${t.hp})`;
+  if (t.type === 'tibbers') return `티버 (HP:${t.hp})`;
+  return t.type;
+}
+
+// ============ PLAYER ACTIONS ============
+function playerMove(dir) {
+  const newPos = state.player.pos + dir;
+  if (newPos < 0 || newPos >= LANE_SIZE) return;
+  state.player.pos = newPos;
+  log(`🔵 Annie 이동 → 위치 ${newPos}`, 'log-info');
+  endPlayerTurn();
+}
+
+function playerAutoAttack() {
+  const targets = getTargetsInRange(state.player, 2);
+  if (targets.length === 0) { log('⚠️ 사거리 내 대상 없음', 'log-info'); return; }
+  if (targets.length === 1) {
+    autoAttack(state.player, targets[0]);
+    endPlayerTurn();
+  } else {
+    showTargetSelect(targets, (t) => { autoAttack(state.player, t); endPlayerTurn(); });
+  }
+}
+
+function playerSkill(key) {
+  const skill = ANNIE.skills[key];
+  const p = state.player;
+  if (p.cooldowns[key] > 0) return;
+  if (p.mp < skill.manaCost) { log('⚠️ 마나 부족!', 'log-info'); render(); return; }
+
+  if (skill.type === 'self') {
+    executeSkill(p, key, null);
+    endPlayerTurn();
+  } else {
+    const targets = getTargetsInRange(p, skill.range);
+    if (targets.length === 0) { log('⚠️ 사거리 내 대상 없음', 'log-info'); render(); return; }
+    if (targets.length === 1) {
+      executeSkill(p, key, targets[0]);
+      endPlayerTurn();
+    } else {
+      showTargetSelect(targets, (t) => { executeSkill(p, key, t); endPlayerTurn(); });
+    }
+  }
+}
+
+function showTargetSelect(targets, callback) {
+  state.phase = 'target';
+  const container = document.getElementById('target-buttons');
+  container.innerHTML = '';
+  const div = document.getElementById('target-select');
+  div.style.display = 'block';
+
+  targets.forEach(t => {
+    const btn = document.createElement('button');
+    btn.textContent = targetLabel(t);
+    btn.onclick = () => {
+      div.style.display = 'none';
+      state.phase = 'action';
+      callback(t);
+    };
+    container.appendChild(btn);
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = '취소';
+  cancelBtn.style.borderColor = '#ff4444';
+  cancelBtn.onclick = () => {
+    div.style.display = 'none';
+    state.phase = 'action';
+    render();
+  };
+  container.appendChild(cancelBtn);
+  render();
+}
+
+// ============ END PLAYER TURN → AI + WORLD ============
+function endPlayerTurn() {
+  document.getElementById('target-select').style.display = 'none';
+  if (checkGameOver()) { render(); return; }
+
+  // AI turn
+  aiTurn();
+  if (checkGameOver()) { render(); return; }
+
+  // Minion turns
+  minionTurns();
+  if (checkGameOver()) { render(); return; }
+
+  // Tower attacks
+  towerAttacks();
+  if (checkGameOver()) { render(); return; }
+
+  // Tibbers AI
+  tibbersAI();
+  if (checkGameOver()) { render(); return; }
+
+  // Cooldown reduction
+  tickCooldowns(state.player);
+  tickCooldowns(state.enemy);
+
+  // Clear stun
+  state.player.stunned = false;
+  state.enemy.stunned = false;
+
+  // Regen
+  state.player.mp = Math.min(state.player.maxMp, state.player.mp + 10);
+  state.enemy.mp = Math.min(state.enemy.maxMp, state.enemy.mp + 10);
+
+  // Respawn check
+  respawnCheck();
+
+  // Next turn
+  state.turn++;
+  spawnMinions();
+  cleanDead();
+
+  log(`━━━ 턴 ${state.turn} ━━━`, 'log-turn');
+  render();
+}
+
+function tickCooldowns(champ) {
+  for (let k of ['q', 'w', 'e', 'r']) {
+    if (champ.cooldowns[k] > 0) champ.cooldowns[k]--;
+  }
+}
+
+function respawnCheck() {
+  // Champions respawn after 3 turns (simplified)
+  // For now, no respawn — death = game over via tower push
+}
+
+// ============ AI (simple) ============
+function aiTurn() {
+  const ai = state.enemy;
+  if (!ai.alive || ai.stunned) {
+    if (ai.stunned) log('🔴 Annie 스턴 상태! 턴 스킵', 'log-info');
+    return;
+  }
+
+  // Check stun for player
+  if (state.player.stunned) {
+    log('🔵 Annie 스턴 상태! 턴 스킵', 'log-info');
+  }
+
+  // Simple AI: try to use skills on nearby targets, else move forward, else auto
+  const p = state.player;
+
+  // Try R if available and player in range
+  if (ai.cooldowns.r === 0 && ai.mp >= ANNIE.skills.r.manaCost && p.alive && distance(ai.pos, p.pos) <= ANNIE.skills.r.range) {
+    executeSkill(ai, 'r', p);
+    return;
+  }
+
+  // Try Q on low HP minion or player
+  if (ai.cooldowns.q === 0 && ai.mp >= ANNIE.skills.q.manaCost) {
+    // Check for last-hittable minion
+    const minions = state.minions.filter(m => m.alive && m.team === 'blue' && distance(ai.pos, m.pos) <= ANNIE.skills.q.range);
+    const lastHit = minions.find(m => m.hp <= ANNIE.skills.q.damage);
+    if (lastHit) { executeSkill(ai, 'q', lastHit); return; }
+    if (p.alive && distance(ai.pos, p.pos) <= ANNIE.skills.q.range) {
+      executeSkill(ai, 'q', p);
+      return;
+    }
+  }
+
+  // Try W
+  if (ai.cooldowns.w === 0 && ai.mp >= ANNIE.skills.w.manaCost) {
+    const targets = getTargetsInRange(ai, ANNIE.skills.w.range);
+    if (targets.length > 0) {
+      executeSkill(ai, 'w', targets[0]);
+      return;
+    }
+  }
+
+  // Try E if not shielded
+  if (ai.cooldowns.e === 0 && ai.shield === 0 && ai.mp >= ANNIE.skills.e.manaCost) {
+    executeSkill(ai, 'e', null);
+    return;
+  }
+
+  // Auto attack
+  const aaTargets = getTargetsInRange(ai, 2);
+  if (aaTargets.length > 0) {
+    // Prioritize: last-hit minion > champion > minion > tower
+    const lowMinion = aaTargets.find(t => t.type === 'minion' && t.hp <= ai.ad);
+    if (lowMinion) { autoAttack(ai, lowMinion); return; }
+    const champ = aaTargets.find(t => t.type === 'champion');
+    if (champ) { autoAttack(ai, champ); return; }
+    autoAttack(ai, aaTargets[0]);
+    return;
+  }
+
+  // Move toward center
+  if (ai.pos > 6) {
+    ai.pos--;
+    log(`🔴 Annie 이동 → 위치 ${ai.pos}`, 'log-info');
+  }
+}
+
+// ============ MINION AI ============
+function minionTurns() {
+  for (const m of state.minions) {
+    if (!m.alive) continue;
+    const enemyTeam = m.team === 'blue' ? 'red' : 'blue';
+
+    // Find closest enemy
+    let closest = null, closestDist = 999;
+    const enemies = [...state.minions.filter(e => e.alive && e.team === enemyTeam)];
+    const ec = m.team === 'blue' ? state.enemy : state.player;
+    if (ec.alive) enemies.push(ec);
+    state.towers.filter(t => t.alive && t.team === enemyTeam).forEach(t => enemies.push(t));
+    state.tibbersList.filter(t => t.alive && t.team === enemyTeam).forEach(t => enemies.push(t));
+
+    for (const e of enemies) {
+      const d = distance(m.pos, e.pos);
+      if (d < closestDist) { closestDist = d; closest = e; }
+    }
+
+    if (closest && closestDist <= 1) {
+      // Attack
+      const dmg = calcDamage(m.ad, 'physical', closest);
+      applyDamage(closest, dmg);
+      if (!closest.alive && closest.type === 'champion') {
+        log(`💀 미니언이 챔피언을 처치!`, 'log-kill');
+      }
+    } else {
+      // Move
+      const dir = m.team === 'blue' ? 1 : -1;
+      const newPos = m.pos + dir;
+      if (newPos >= 0 && newPos < LANE_SIZE) m.pos = newPos;
+    }
+  }
+}
+
+// ============ TOWER AI ============
+function towerAttacks() {
+  for (const tower of state.towers) {
+    if (!tower.alive) continue;
+    // Find enemies in range, prioritize minions then champions
+    const enemyTeam = tower.team === 'blue' ? 'red' : 'blue';
+    const inRange = [];
+    state.minions.filter(m => m.alive && m.team === enemyTeam && distance(tower.pos, m.pos) <= tower.range).forEach(m => inRange.push(m));
+    const ec = tower.team === 'blue' ? state.enemy : state.player;
+    if (ec.alive && distance(tower.pos, ec.pos) <= tower.range) inRange.push(ec);
+    state.tibbersList.filter(t => t.alive && t.team === enemyTeam && distance(tower.pos, t.pos) <= tower.range).forEach(t => inRange.push(t));
+
+    if (inRange.length > 0) {
+      // Prioritize: champion attacking our champion > minions > tibbers > champion
+      const target = inRange.find(t => t.type === 'minion') || inRange[0];
+      const dmg = calcDamage(tower.ad, 'physical', target);
+      applyDamage(target, dmg);
+      const tLabel = tower.team === 'blue' ? '🔵' : '🔴';
+      log(`🏰${tLabel} 타워 → ${target.name || target.type}에게 ${dmg} 피해`, 'log-dmg');
+      if (!target.alive) {
+        if (target.type === 'champion') {
+          log(`💀 타워가 챔피언을 처치!`, 'log-kill');
+        }
+      }
+    }
+  }
+}
+
+// ============ TIBBERS AI ============
+function tibbersAI() {
+  for (const tib of state.tibbersList) {
+    if (!tib.alive) continue;
+    const enemies = getEnemyTargets(tib);
+    let closest = null, closestDist = 999;
+    for (const e of enemies) {
+      const d = distance(tib.pos, e.pos);
+      if (d < closestDist) { closestDist = d; closest = e; }
+    }
+    if (closest && closestDist <= 1) {
+      const dmg = calcDamage(tib.ad, 'physical', closest);
+      applyDamage(closest, dmg);
+      const label = tib.team === 'blue' ? '🔵' : '🔴';
+      log(`🧸${label} 티버 → ${closest.name || closest.type}에게 ${dmg} 피해`, 'log-dmg');
+    } else if (closest) {
+      const dir = tib.pos < closest.pos ? 1 : -1;
+      tib.pos += dir;
+    }
+  }
+}
+
+// ============ CLEANUP ============
+function cleanDead() {
+  state.minions = state.minions.filter(m => m.alive);
+  state.tibbersList = state.tibbersList.filter(t => t.alive);
+  if (state.player.tibbers && !state.player.tibbers.alive) state.player.tibbers = null;
+  if (state.enemy.tibbers && !state.enemy.tibbers.alive) state.enemy.tibbers = null;
+}
+
+// ============ GAME OVER CHECK ============
+function checkGameOver() {
+  const blueTower = state.towers.find(t => t.team === 'blue');
+  const redTower = state.towers.find(t => t.team === 'red');
+  if (!blueTower.alive) {
+    state.gameOver = true;
+    document.getElementById('game-over-text').textContent = '패배... 🔴 타워가 파괴되었습니다';
+    document.getElementById('game-over').style.display = 'block';
+    return true;
+  }
+  if (!redTower.alive) {
+    state.gameOver = true;
+    document.getElementById('game-over-text').textContent = '승리! 🔵 적 타워를 파괴했습니다!';
+    document.getElementById('game-over').style.display = 'block';
+    return true;
+  }
+  return false;
+}
+
+// ============ RENDER ============
+function render() {
+  renderLane();
+  renderStats();
+  renderActions();
+  renderLog();
+}
+
+function renderLane() {
+  const el = document.getElementById('lane-display');
+  // Build lane
+  let lane = [];
+  for (let i = 0; i < LANE_SIZE; i++) lane[i] = [];
+
+  // Towers
+  for (const t of state.towers) {
+    if (t.alive) lane[t.pos].push(t.team === 'blue' ? '🏰🔵' : '🏰🔴');
+  }
+  // Minions
+  for (const m of state.minions) {
+    if (m.alive) lane[m.pos].push(m.team === 'blue' ? '👤🔵' : '👤🔴');
+  }
+  // Tibbers
+  for (const t of state.tibbersList) {
+    if (t.alive) lane[t.pos].push(t.team === 'blue' ? '🧸🔵' : '🧸🔴');
+  }
+  // Champions
+  if (state.player.alive) lane[state.player.pos].push('🔵Annie');
+  if (state.enemy.alive) lane[state.enemy.pos].push('🔴Annie');
+
+  // Render
+  let header = '  ';
+  let separator = '  ';
+  let units = '  ';
+
+  for (let i = 0; i < LANE_SIZE; i++) {
+    const cell = String(i).padStart(2, ' ').padEnd(8);
+    header += cell;
+  }
+
+  for (let i = 0; i < LANE_SIZE; i++) {
+    const content = lane[i].length > 0 ? lane[i].join(' ') : '·';
+    const cell = content.padEnd(6);
+    units += cell + '  ';
+  }
+
+  el.textContent = `턴 ${state.turn}\n${header}\n${units}`;
+}
+
+function renderStats() {
+  const p = state.player;
+  const e = state.enemy;
+
+  const skillInfo = (champ, key) => {
+    const s = ANNIE.skills[key];
+    const cd = champ.cooldowns[key];
+    if (cd > 0) return `<span class="cd">${s.key}(${s.name}) CD:${cd}</span>`;
+    if (champ.mp < s.manaCost) return `<span class="cd">${s.key}(${s.name}) 마나부족</span>`;
+    return `<span class="ready">${s.key}(${s.name}) ✓</span>`;
+  };
+
+  const passiveInfo = (champ) => {
+    const stacks = champ.passiveStacks;
+    const needed = ANNIE.skills.passive.stacksNeeded;
+    const bar = '■'.repeat(stacks) + '□'.repeat(needed - stacks);
+    return stacks >= needed - 1 ? `<span class="stun">패시브 [${bar}] 다음 스킬 스턴!</span>` : `패시브 [${bar}] ${stacks}/${needed}`;
+  };
+
+  document.getElementById('player-stats').innerHTML = `
+    <h3>🔵 Annie (플레이어) — 위치: ${p.pos}</h3>
+    <span class="hp">❤️ ${p.hp}/${p.maxHp}</span>${p.shield > 0 ? ` <span class="stun">🛡️${p.shield}</span>` : ''} | <span class="mp">💧 ${p.mp}/${p.maxMp}</span> | <span class="gold">💰 ${p.gold}G</span><br>
+    ⚔️ AD:${p.ad} | 🔮 AP:${p.ap} | 🛡️ 방어:${p.armor} | 🔮 마저:${p.mr}<br>
+    ${passiveInfo(p)}<br>
+    ${skillInfo(p, 'q')} | ${skillInfo(p, 'w')} | ${skillInfo(p, 'e')} | ${skillInfo(p, 'r')}
+    ${p.stunned ? '<br><span class="stun">⚡ 스턴 상태!</span>' : ''}
+  `;
+
+  document.getElementById('enemy-stats').innerHTML = `
+    <h3>🔴 Annie (AI) — 위치: ${e.pos}</h3>
+    <span class="hp">❤️ ${e.hp}/${e.maxHp}</span>${e.shield > 0 ? ` <span class="stun">🛡️${e.shield}</span>` : ''} | <span class="mp">💧 ${e.mp}/${e.maxMp}</span> | <span class="gold">💰 ${e.gold}G</span><br>
+    ⚔️ AD:${e.ad} | 🔮 AP:${e.ap} | 🛡️ 방어:${e.armor} | 🔮 마저:${e.mr}<br>
+    ${passiveInfo(e)}<br>
+    ${skillInfo(e, 'q')} | ${skillInfo(e, 'w')} | ${skillInfo(e, 'e')} | ${skillInfo(e, 'r')}
+    ${e.stunned ? '<br><span class="stun">⚡ 스턴 상태!</span>' : ''}
+  `;
+}
+
+function renderActions() {
+  const el = document.getElementById('actions');
+  const p = state.player;
+  if (state.gameOver || !p.alive) { el.innerHTML = ''; return; }
+  if (state.phase === 'target') { el.innerHTML = '<em>타겟을 선택하세요...</em>'; return; }
+  if (p.stunned) { el.innerHTML = '<button onclick="endPlayerTurn()">⚡ 스턴! (턴 넘기기)</button>'; return; }
+
+  const canQ = p.cooldowns.q === 0 && p.mp >= ANNIE.skills.q.manaCost;
+  const canW = p.cooldowns.w === 0 && p.mp >= ANNIE.skills.w.manaCost;
+  const canE = p.cooldowns.e === 0 && p.mp >= ANNIE.skills.e.manaCost;
+  const canR = p.cooldowns.r === 0 && p.mp >= ANNIE.skills.r.manaCost;
+
+  el.innerHTML = `
+    <button class="move" onclick="playerMove(-1)" ${p.pos <= 0 ? 'disabled' : ''}>← 이동</button>
+    <button class="move" onclick="playerMove(1)" ${p.pos >= LANE_SIZE - 1 ? 'disabled' : ''}>이동 →</button>
+    <button class="attack" onclick="playerAutoAttack()">⚔️ 평타</button>
+    <button class="skill-q" onclick="playerSkill('q')" ${!canQ ? 'disabled' : ''}>Q 붕괴 (${ANNIE.skills.q.manaCost}mp)</button>
+    <button class="skill-w" onclick="playerSkill('w')" ${!canW ? 'disabled' : ''}>W 소각 (${ANNIE.skills.w.manaCost}mp)</button>
+    <button class="skill-e" onclick="playerSkill('e')" ${!canE ? 'disabled' : ''}>E 보호막 (${ANNIE.skills.e.manaCost}mp)</button>
+    <button class="skill-r" onclick="playerSkill('r')" ${!canR ? 'disabled' : ''}>R 티버 (${ANNIE.skills.r.manaCost}mp)</button>
+  `;
+}
+
+function renderLog() {
+  const el = document.getElementById('log');
+  const recent = state.logs.slice(-50);
+  el.innerHTML = recent.map(l => `<div class="${l.cls}">${l.msg}</div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+// ============ START ============
+initGame();
+</script>
+</body>
+</html>

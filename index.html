@@ -52,12 +52,6 @@ h1 { text-align:center; color:#f0c040; margin-bottom:2px; font-size:22px; }
 .skill-lvlup button:hover { background:#333300; }
 .enemy-unknown { color:#666; font-style:italic; font-size:11px; }
 
-/* Turn phase */
-#phase-bar { background:#111; border:1px solid #f0c040; padding:10px; margin-bottom:10px; border-radius:4px; text-align:center; }
-#phase-bar .phase-title { color:#f0c040; font-size:13px; font-weight:bold; margin-bottom:6px; }
-#phase-bar .ai-action { color:#ff6644; font-size:12px; margin-bottom:6px; }
-#phase-bar .player-action { color:#88aaff; font-size:12px; margin-bottom:6px; }
-
 /* Actions */
 #actions { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; justify-content:center; }
 #actions button { background:#222; color:#e0e0e0; border:1px solid #555; padding:7px 14px; cursor:pointer; border-radius:4px; font-family:inherit; font-size:12px; transition:all 0.15s; }
@@ -69,8 +63,6 @@ h1 { text-align:center; color:#f0c040; margin-bottom:2px; font-size:22px; }
 #actions button.skill-w { border-color:#ff4444; }
 #actions button.skill-e { border-color:#44aaff; }
 #actions button.skill-r { border-color:#ff00ff; background:#1a0020; }
-#actions button.confirm { border-color:#f0c040; background:#2a2a00; color:#f0c040; font-weight:bold; }
-#actions button.confirm:hover { background:#444400; }
 #actions button.cancel { border-color:#ff4444; }
 
 /* Shop */
@@ -87,15 +79,16 @@ h1 { text-align:center; color:#f0c040; margin-bottom:2px; font-size:22px; }
 .inventory span { background:#1a1a1a; border:1px solid #333; padding:1px 4px; border-radius:2px; margin-right:2px; }
 
 /* Log */
-#log { background:#0a0a0a; border:1px solid #333; padding:8px; height:180px; overflow-y:auto; margin-bottom:10px; border-radius:4px; font-size:11px; line-height:1.5; }
-.log-turn { color:#f0c040; font-weight:bold; }
-.log-dmg { color:#ff6644; }
-.log-heal { color:#44ff44; }
-.log-info { color:#88aaff; }
-.log-kill { color:#ff44ff; }
-.log-ult { color:#ff00ff; font-weight:bold; }
-.log-reveal { color:#ffcc00; font-weight:bold; }
-.log-miss { color:#666; }
+#log { background:#0a0a0a; border:1px solid #333; padding:10px 12px; height:240px; overflow-y:auto; margin-bottom:10px; border-radius:4px; font-size:12px; line-height:1.7; }
+#log .log-turn { color:#f0c040; font-weight:bold; font-size:13px; border-top:1px solid #2a2a00; margin-top:6px; padding-top:6px; }
+#log .log-turn:first-child { border-top:none; margin-top:0; }
+#log .log-dmg { color:#ff6644; padding-left:8px; }
+#log .log-heal { color:#44ff44; padding-left:8px; }
+#log .log-info { color:#88aaff; padding-left:8px; }
+#log .log-kill { color:#ff44ff; font-weight:bold; padding-left:8px; }
+#log .log-ult { color:#ff00ff; font-weight:bold; padding-left:8px; font-size:13px; }
+#log .log-reveal { color:#ffcc00; font-weight:bold; padding-left:8px; }
+#log .log-miss { color:#555; padding-left:8px; font-style:italic; }
 
 /* Effects */
 #ult-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:100; opacity:0; transition:opacity 0.15s; }
@@ -130,7 +123,6 @@ h1 { text-align:center; color:#f0c040; margin-bottom:2px; font-size:22px; }
     <div class="stat-panel player" id="player-stats"></div>
     <div class="stat-panel enemy" id="enemy-stats"></div>
   </div>
-  <div id="phase-bar"></div>
   <div id="shop"></div>
   <div id="actions"></div>
   <div id="log"></div>
@@ -442,8 +434,7 @@ function setPlayerSkill(key){
   if(p.skillLevels[key]<=0||p.cooldowns[key]>0||p.mp<s.manaCost)return;
   if(s.type==='self'){
     state.playerAction={type:'skill',key,desc:`E 보호막`};
-    state.phase='plan';
-    render();return;
+    executeTurn();return;
   }
   state.phase='target';
   state.targetMode={type:'skill',key,range:s.range};
@@ -475,9 +466,9 @@ function selectCell(x,y){
     if(dist({x:p.x,y:p.y},{x,y})>s.range)return;
     state.playerAction={type:'skill',key:tm.key,target:{x,y},desc:`${s.key} ${s.name} → (${x},${y})`};
   }
-  state.phase='plan';
   state.targetMode=null;
-  render();
+  // Immediate execution — no confirm
+  executeTurn();
 }
 function cancelTarget(){
   state.phase='plan';
@@ -541,14 +532,8 @@ function shopBuy(itemId){
   if(buyItem(p,itemId)){
     state.playerAction={type:'shop',desc:`🛒 상점 이용`};
     document.getElementById('shop').style.display='none';
-    render();
+    executeTurn();
   }
-}
-
-function confirmActions(){
-  if(!state.playerAction){log('⚠️ 행동을 선택하세요','log-info');render();return;}
-  // Blind simultaneous — both committed, execute immediately
-  executeTurn();
 }
 
 // ============ EXECUTE TURN ============
@@ -858,7 +843,7 @@ function checkGameOver(){
 }
 
 // ============ RENDER ============
-function render(){renderMap();renderStats();renderPhase();renderActions();renderLog();}
+function render(){renderMap();renderStats();renderActions();renderLog();}
 
 function renderMap(){
   const mapEl=document.getElementById('map');
@@ -1021,19 +1006,6 @@ function renderStats(){
   }
 }
 
-function renderPhase(){
-  const el=document.getElementById('phase-bar');
-  if(state.gameOver){el.innerHTML='';return;}
-
-  const revealIn=REVEAL_INTERVAL-(state.turn%REVEAL_INTERVAL);
-  const revealText=revealIn===REVEAL_INTERVAL?'👁️ 이번 턴에 적 위치 공개!':`👁️ 적 위치 공개까지 ${revealIn}턴`;
-
-  let html=`<div class="phase-title">턴 ${state.turn} — ${revealText}</div>`;
-  html+=`<div class="ai-action">🔴 AI 행동: ❓ (확정 후 공개)</div>`;
-  html+=`<div class="player-action">🔵 내 행동: ${state.playerAction?state.playerAction.desc:'선택하세요'}</div>`;
-  el.innerHTML=html;
-}
-
 function renderActions(){
   const el=document.getElementById('actions');
   const p=state.player;
@@ -1051,13 +1023,16 @@ function renderActions(){
 
   if(p.stunned){
     state.playerAction={type:'wait',desc:'⚡ 스턴 상태'};
-    el.innerHTML=`<button class="confirm" onclick="confirmActions()">⚡ 스턴 — 확정</button>`;
+    executeTurn();
     return;
   }
 
+  const revealIn=REVEAL_INTERVAL-(state.turn%REVEAL_INTERVAL);
+  const revealText=revealIn===REVEAL_INTERVAL?'👁️ 이번 턴 공개!':`👁️ ${revealIn}턴 후 공개`;
+
   const can=k=>p.skillLevels[k]>0&&p.cooldowns[k]===0&&p.mp>=ANNIE.skills[k].manaCost;
   const flashReady=p.flashCd===0;
-  let html=`
+  let html=`<span style="color:#f0c040;font-size:12px;margin-right:8px">턴 ${state.turn} | ${revealText}</span>
     <button class="move" onclick="setPlayerMove()">🚶 이동</button>
     <button class="attack" onclick="setPlayerAttack()">⚔️ 평타</button>
     <button style="border-color:${flashReady?'#ffff44':'#555'};${flashReady?'color:#ffff44':'opacity:0.35'}" onclick="setPlayerFlash()" ${!flashReady?'disabled':''}>✨ 점멸${p.flashCd>0?' ('+p.flashCd+')':''}</button>
@@ -1067,9 +1042,6 @@ function renderActions(){
     <button class="skill-e" onclick="setPlayerSkill('e')" ${!can('e')?'disabled':''}>E 보호막</button>
     <button class="skill-r" onclick="setPlayerSkill('r')" ${!can('r')?'disabled':''}>🔥 R 티버</button>
   `;
-  if(state.playerAction){
-    html+=`<button class="confirm" onclick="confirmActions()">✅ 확정</button>`;
-  }
   el.innerHTML=html;
 }
 

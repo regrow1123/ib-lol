@@ -73,6 +73,19 @@ h1 { text-align:center; color:#f0c040; margin-bottom:2px; font-size:22px; }
 #actions button.confirm:hover { background:#444400; }
 #actions button.cancel { border-color:#ff4444; }
 
+/* Shop */
+#shop { display:none; background:#111; border:1px solid #f0c040; padding:10px; margin-bottom:10px; border-radius:4px; }
+#shop h4 { color:#f0c040; margin-bottom:8px; font-size:13px; }
+#shop .shop-grid { display:flex; flex-wrap:wrap; gap:6px; }
+#shop .shop-item { background:#1a1a1a; border:1px solid #333; padding:6px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-family:inherit; color:#e0e0e0; transition:all 0.15s; min-width:120px; }
+#shop .shop-item:hover { border-color:#f0c040; background:#222; }
+#shop .shop-item.cant { opacity:0.35; cursor:not-allowed; }
+#shop .shop-item .item-name { color:#f0c040; }
+#shop .shop-item .item-cost { color:#ffaa00; }
+#shop .shop-item .item-stats { color:#888; font-size:10px; }
+.inventory { font-size:10px; margin-top:4px; color:#aaa; }
+.inventory span { background:#1a1a1a; border:1px solid #333; padding:1px 4px; border-radius:2px; margin-right:2px; }
+
 /* Log */
 #log { background:#0a0a0a; border:1px solid #333; padding:8px; height:180px; overflow-y:auto; margin-bottom:10px; border-radius:4px; font-size:11px; line-height:1.5; }
 .log-turn { color:#f0c040; font-weight:bold; }
@@ -118,6 +131,7 @@ h1 { text-align:center; color:#f0c040; margin-bottom:2px; font-size:22px; }
     <div class="stat-panel enemy" id="enemy-stats"></div>
   </div>
   <div id="phase-bar"></div>
+  <div id="shop"></div>
   <div id="actions"></div>
   <div id="log"></div>
 </div>
@@ -162,8 +176,24 @@ const EPIC_RESPAWN=20;
 const DRAGON_HP=5, BARON_HP=8;
 const DRAGON_XP=400, DRAGON_GOLD=100;
 const BARON_XP=500, BARON_GOLD=150;
-const DRAGON_BUFF_DURATION=15; // 드래곤: 전 스탯 강화
-const BARON_BUFF_DURATION=12;  // 바론: 스킬 강화
+const DRAGON_BUFF_DURATION=15;
+const BARON_BUFF_DURATION=12;
+
+// ============ SHOP / ITEMS ============
+const ITEMS=[
+  {id:'dsword',name:'도란의 검',cost:100,ad:10,hp:80,icon:'🗡️'},
+  {id:'dring',name:'도란의 반지',cost:100,ap:15,hp:60,icon:'💍'},
+  {id:'boots',name:'장화',cost:150,moveRange:1,icon:'👟'},
+  {id:'longsword',name:'롱소드',cost:175,ad:15,icon:'⚔️'},
+  {id:'tome',name:'증폭의 서',cost:175,ap:25,icon:'📕'},
+  {id:'ruby',name:'루비 수정',cost:200,hp:150,icon:'💎'},
+  {id:'cloth',name:'천 갑옷',cost:150,armor:15,icon:'🛡️'},
+  {id:'cloak',name:'마법 망토',cost:150,mr:20,icon:'🧥'},
+  {id:'bf',name:'B.F. 대검',cost:350,ad:30,icon:'🔪'},
+  {id:'rod',name:'쓸데없이 큰 지팡이',cost:350,ap:50,icon:'🪄'},
+  {id:'chain',name:'쇠사슬 갑옷',cost:300,armor:30,icon:'⛓️'},
+  {id:'potion',name:'물약',cost:50,healHp:120,consumable:true,icon:'🧪'},
+];
 
 const ANNIE={
   name:'Annie',hp:560,mp:418,ad:50,ap:0,armor:19,mr:30,
@@ -205,16 +235,40 @@ function createChamp(team,x,y){
     ad:ANNIE.ad,ap:ANNIE.ap,armor:ANNIE.armor,mr:ANNIE.mr,
     level:1,xp:0,skillPoints:1,skillLevels:{q:0,w:0,e:0,r:0},
     passiveStacks:0,shield:0,cooldowns:{q:0,w:0,e:0,r:0},
-    tibbers:null,gold:0,alive:true,stunned:false,redBuff:0,blueBuff:0,dragonStacks:0,baronBuff:0};
+    tibbers:null,gold:0,alive:true,stunned:false,redBuff:0,blueBuff:0,dragonStacks:0,baronBuff:0,
+    items:[],bonusAd:0,bonusAp:0,bonusHp:0,bonusArmor:0,bonusMr:0,bonusMoveRange:0};
   recalc(c);return c;
 }
 function recalc(c){
   const l=c.level;
-  c.maxHp=Math.floor(c.baseHp+ANNIE.hpPerLvl*(l-1));
+  c.maxHp=Math.floor(c.baseHp+ANNIE.hpPerLvl*(l-1))+c.bonusHp;
   c.maxMp=Math.floor(c.baseMp+ANNIE.mpPerLvl*(l-1));
-  c.ad=Math.floor(c.baseAd+ANNIE.adPerLvl*(l-1));
-  c.armor=Math.floor(ANNIE.armor+ANNIE.armorPerLvl*(l-1));
-  c.mr=Math.floor(ANNIE.mr+ANNIE.mrPerLvl*(l-1));
+  c.ad=Math.floor(c.baseAd+ANNIE.adPerLvl*(l-1))+c.bonusAd;
+  c.ap=(c.baseAp||0)+c.bonusAp;
+  c.armor=Math.floor(ANNIE.armor+ANNIE.armorPerLvl*(l-1))+c.bonusArmor;
+  c.mr=Math.floor(ANNIE.mr+ANNIE.mrPerLvl*(l-1))+c.bonusMr;
+}
+function buyItem(champ,itemId){
+  const item=ITEMS.find(i=>i.id===itemId);
+  if(!item||champ.gold<item.cost)return false;
+  if(!item.consumable&&champ.items.length>=6)return false;
+  champ.gold-=item.cost;
+  if(item.consumable){
+    if(item.healHp){champ.hp=Math.min(champ.maxHp,champ.hp+item.healHp);}
+    log(`${champ.team==='blue'?'🔵':'🔴'} ${item.icon} ${item.name} 사용! HP+${item.healHp}`,'log-heal');
+    return true;
+  }
+  champ.items.push(itemId);
+  if(item.ad)champ.bonusAd+=item.ad;
+  if(item.ap)champ.bonusAp+=item.ap;
+  if(item.hp){champ.bonusHp+=item.hp;}
+  if(item.armor)champ.bonusArmor+=item.armor;
+  if(item.mr)champ.bonusMr+=item.mr;
+  if(item.moveRange)champ.bonusMoveRange+=item.moveRange;
+  recalc(champ);
+  champ.hp=Math.min(champ.maxHp,champ.hp+((item.hp)||0));
+  log(`${champ.team==='blue'?'🔵':'🔴'} ${item.icon} ${item.name} 구매!`,'log-info');
+  return true;
 }
 function grantXP(c,amt){
   if(c.level>=MAX_LEVEL)return;
@@ -370,6 +424,19 @@ function aiDecideAction(){
     return{type:'skill',key:'e',desc:'E 보호막'};
   }
 
+  // AI shop: buy best affordable item
+  if(ai.items.length<6){
+    const affordable=ITEMS.filter(i=>!i.consumable&&ai.gold>=i.cost).sort((a,b)=>b.cost-a.cost);
+    if(affordable.length>0){
+      const best=affordable[0];
+      return{type:'shop',itemId:best.id,desc:`🛒 상점 이용`};
+    }
+  }
+  // Buy potion if low HP
+  if(ai.hp<ai.maxHp*0.4&&ai.gold>=50){
+    return{type:'shop',itemId:'potion',desc:`🛒 상점 이용`};
+  }
+
   // Move toward nearest minion or wander
   const aliveMinions=state.minions.filter(m=>m.alive);
   let bestMinion=null,bestDist=999;
@@ -414,7 +481,8 @@ function selectCell(x,y){
 
   if(tm.type==='move'){
     const dx=x-p.x,dy=y-p.y;
-    if(Math.abs(dx)+Math.abs(dy)!==1)return;
+    const mRange=1+(p.bonusMoveRange||0);
+    if(Math.abs(dx)+Math.abs(dy)>mRange||Math.abs(dx)+Math.abs(dy)<1)return;
     if(!isWalkable(x,y))return;
     state.playerAction={type:'move',dir:{x:dx,y:dy},dest:{x,y},desc:`🚶 이동`};
   } else if(tm.type==='attack'){
@@ -433,6 +501,44 @@ function cancelTarget(){
   state.phase='plan';
   state.targetMode=null;
   render();
+}
+
+function toggleShop(){
+  const el=document.getElementById('shop');
+  if(el.style.display==='block'){el.style.display='none';return;}
+  el.style.display='block';
+  renderShop();
+}
+function renderShop(){
+  const el=document.getElementById('shop');
+  const p=state.player;
+  let html=`<h4>🛒 상점 — 💰 ${p.gold}G (아이템 ${p.items.length}/6) — 구매 = 턴 소모</h4><div class="shop-grid">`;
+  ITEMS.forEach(item=>{
+    const canBuy=p.gold>=item.cost&&(item.consumable||p.items.length<6);
+    let stats=[];
+    if(item.ad)stats.push(`AD+${item.ad}`);
+    if(item.ap)stats.push(`AP+${item.ap}`);
+    if(item.hp)stats.push(`HP+${item.hp}`);
+    if(item.armor)stats.push(`방어+${item.armor}`);
+    if(item.mr)stats.push(`마저+${item.mr}`);
+    if(item.moveRange)stats.push(`이동+${item.moveRange}`);
+    if(item.healHp)stats.push(`회복${item.healHp}`);
+    if(item.consumable)stats.push('소모품');
+    html+=`<div class="shop-item ${canBuy?'':'cant'}" onclick="${canBuy?`shopBuy('${item.id}')`:''}">`+
+      `<span class="item-name">${item.icon} ${item.name}</span> `+
+      `<span class="item-cost">${item.cost}G</span><br>`+
+      `<span class="item-stats">${stats.join(' ')}</span></div>`;
+  });
+  html+=`</div><button style="margin-top:8px;background:#222;color:#e0e0e0;border:1px solid #555;padding:5px 12px;cursor:pointer;border-radius:4px;font-family:inherit;font-size:11px" onclick="toggleShop()">닫기</button>`;
+  el.innerHTML=html;
+}
+function shopBuy(itemId){
+  const p=state.player;
+  if(buyItem(p,itemId)){
+    state.playerAction={type:'shop',desc:`🛒 상점 이용`};
+    document.getElementById('shop').style.display='none';
+    render();
+  }
 }
 
 function confirmActions(){
@@ -532,8 +638,13 @@ function executeAction(champ,action){
   if(!champ.alive||!action)return;
   if(champ.stunned)return;
 
+  if(action.type==='shop'){
+    if(action.itemId)buyItem(champ,action.itemId);
+    return;
+  }
   if(action.type==='move'){
-    const nx=champ.x+action.dir.x,ny=champ.y+action.dir.y;
+    const nx=action.dest?action.dest.x:champ.x+action.dir.x;
+    const ny=action.dest?action.dest.y:champ.y+action.dir.y;
     if(isWalkable(nx,ny)){champ.x=nx;champ.y=ny;}
   }
   else if(action.type==='attack'){
@@ -770,8 +881,11 @@ function renderMap(){
   const moveCells=new Set();
   if(state.targetMode){
     if(state.targetMode.type==='move'){
-      const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
-      for(const[dx,dy]of dirs){const nx=p.x+dx,ny=p.y+dy;if(isWalkable(nx,ny))moveCells.add(nx+','+ny);}
+      const mRange=1+(p.bonusMoveRange||0);
+      for(let dy=-mRange;dy<=mRange;dy++)for(let dx=-mRange;dx<=mRange;dx++){
+        if(Math.abs(dx)+Math.abs(dy)<1||Math.abs(dx)+Math.abs(dy)>mRange)continue;
+        const nx=p.x+dx,ny=p.y+dy;if(isWalkable(nx,ny))moveCells.add(nx+','+ny);
+      }
     }else if(state.targetMode.type==='attack'){
       // Auto-attack: only cells with visible units
       const range=state.targetMode.range||2;
@@ -877,6 +991,7 @@ function renderStats(){
         <div class="passive-bar">🔥 ${stacks}${c.redBuff>0?` <span style="color:#ff4444;font-size:10px">🔴레드(${c.redBuff})</span>`:''}${c.blueBuff>0?` <span style="color:#4488ff;font-size:10px">🔵블루(${c.blueBuff})</span>`:''}${(c.dragonStacks||0)>0?` <span style="color:#ff8800;font-size:10px">🐉드래곤x${c.dragonStacks}</span>`:''}${c.baronBuff>0?` <span style="color:#cc44ff;font-size:10px">👿바론(${c.baronBuff})</span>`:''}</div>
         <div class="skill-row">${badges}</div>
         ${c.stunned?'<div style="color:#ff44ff;margin-top:3px;font-size:11px">⚡ 스턴!</div>':''}
+        ${c.items.length>0?`<div class="inventory">📦 ${c.items.map(id=>{const it=ITEMS.find(i=>i.id===id);return it?`<span>${it.icon}${it.name}</span>`:'';}).join('')}</div>`:''}
       `;
     } else {
       // Enemy: show last known info or unknown
@@ -951,6 +1066,7 @@ function renderActions(){
   let html=`
     <button class="move" onclick="setPlayerMove()">🚶 이동</button>
     <button class="attack" onclick="setPlayerAttack()">⚔️ 평타</button>
+    <button style="border-color:#f0c040" onclick="toggleShop()">🛒 상점 (💰${p.gold}G)</button>
     <button class="skill-q" onclick="setPlayerSkill('q')" ${!can('q')?'disabled':''}>Q 붕괴</button>
     <button class="skill-w" onclick="setPlayerSkill('w')" ${!can('w')?'disabled':''}>W 소각</button>
     <button class="skill-e" onclick="setPlayerSkill('e')" ${!can('e')?'disabled':''}>E 보호막</button>

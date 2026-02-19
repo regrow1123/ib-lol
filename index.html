@@ -215,6 +215,16 @@ const AI_SKILL_ORDER=['q','w','q','e','q','r','w','w','q','w','e','r','q','w','e
 // ============ UTIL ============
 function dist(a,b){return Math.abs(a.x-b.x)+Math.abs(a.y-b.y);}
 function isWalkable(x,y){return x>=0&&x<COLS&&y>=0&&y<ROWS&&MAP[y][x]===1;}
+function isOccupied(x,y){
+  if(state.player.alive&&state.player.x===x&&state.player.y===y)return true;
+  if(state.enemy.alive&&state.enemy.x===x&&state.enemy.y===y)return true;
+  if(state.minions.some(m=>m.alive&&m.x===x&&m.y===y))return true;
+  if(state.buffs.some(b=>b.alive&&b.x===x&&b.y===y))return true;
+  if(state.epics.some(e=>e.alive&&e.x===x&&e.y===y))return true;
+  if(state.tibbersList.some(t=>t.alive&&t.x===x&&t.y===y))return true;
+  return false;
+}
+function isFree(x,y){return isWalkable(x,y)&&!isOccupied(x,y);}
 
 // ============ SKILL HELPERS ============
 function getSkillDmg(key,lvl){const s=ANNIE.skills[key];if(!s.baseDmg||lvl<=0)return 0;return s.baseDmg[Math.min(lvl-1,s.baseDmg.length-1)]||0;}
@@ -326,7 +336,10 @@ function log(msg,cls=''){state.logs.push({msg,cls});}
 // ============ MINIONS ============
 function spawnMinions(){
   state.minions.forEach((m,i)=>{
-    if(!m.alive){m.alive=true;m.x=MINION_POSITIONS[i].x;m.y=MINION_POSITIONS[i].y;}
+    if(!m.alive){
+      const sx=MINION_POSITIONS[i].x,sy=MINION_POSITIONS[i].y;
+      if(!isOccupied(sx,sy)){m.alive=true;m.x=sx;m.y=sy;}
+    }
   });
 }
 
@@ -370,7 +383,7 @@ function aiDecideAction(){
       for(let fy=1;fy<ROWS-1;fy++)for(let fx=1;fx<COLS-1;fx++){
         const fd=dist({x:ai.x,y:ai.y},{x:fx,y:fy});
         const dp=dist({x:fx,y:fy},{x:p.x,y:p.y});
-        if(fd>=1&&fd<=FLASH_RANGE&&isWalkable(fx,fy)&&dp<=3&&dp<bestFD){bestFD=dp;bestFlash={x:fx,y:fy};}
+        if(fd>=1&&fd<=FLASH_RANGE&&isFree(fx,fy)&&dp<=3&&dp<bestFD){bestFD=dp;bestFlash={x:fx,y:fy};}
       }
       if(bestFlash&&ai.skillLevels.r>0&&ai.cooldowns.r===0&&ai.mp>=100){
         execFlash(ai,bestFlash.x,bestFlash.y);
@@ -417,8 +430,8 @@ function aiDecideAction(){
 
   if(bestMinion){
     const dx=Math.sign(bestMinion.x-ai.x),dy=Math.sign(bestMinion.y-ai.y);
-    if(dx!==0&&isWalkable(ai.x+dx,ai.y))return{type:'move',dir:{x:dx,y:0},desc:`🚶 이동`};
-    if(dy!==0&&isWalkable(ai.x,ai.y+dy))return{type:'move',dir:{x:0,y:dy},desc:`🚶 이동`};
+    if(dx!==0&&isFree(ai.x+dx,ai.y))return{type:'move',dir:{x:dx,y:0},desc:`🚶 이동`};
+    if(dy!==0&&isFree(ai.x,ai.y+dy))return{type:'move',dir:{x:0,y:dy},desc:`🚶 이동`};
   }
 
   return{type:'wait',desc:'대기'};
@@ -470,7 +483,7 @@ function selectCell(x,y){
 
   if(tm.type==='flash'){
     if(dist({x:p.x,y:p.y},{x,y})>FLASH_RANGE||dist({x:p.x,y:p.y},{x,y})<1)return;
-    if(!isWalkable(x,y))return;
+    if(!isFree(x,y))return;
     execFlash(p,x,y);
     state.phase='plan';
     state.targetMode=null;
@@ -479,7 +492,7 @@ function selectCell(x,y){
     const dx=x-p.x,dy=y-p.y;
     const mRange=1+(p.bonusMoveRange||0);
     if(Math.abs(dx)+Math.abs(dy)>mRange||Math.abs(dx)+Math.abs(dy)<1)return;
-    if(!isWalkable(x,y))return;
+    if(!isFree(x,y))return;
     state.playerAction={type:'move',dir:{x:dx,y:dy},dest:{x,y},desc:`🚶 이동`};
   } else if(tm.type==='attack'){
     if(dist({x:p.x,y:p.y},{x,y})>tm.range)return;
@@ -534,7 +547,7 @@ function setPlayerFlash(){
 }
 function execFlash(champ,x,y){
   if(champ.flashCd>0||!champ.alive)return false;
-  if(!isWalkable(x,y))return false;
+  if(!isFree(x,y))return false;
   if(dist({x:champ.x,y:champ.y},{x,y})>FLASH_RANGE||dist({x:champ.x,y:champ.y},{x,y})<1)return false;
   const cl=champ.team==='blue'?'🔵':'🔴';
   champ.x=x;champ.y=y;
@@ -667,7 +680,7 @@ function executeAction(champ,action){
   if(action.type==='move'){
     const nx=action.dest?action.dest.x:champ.x+action.dir.x;
     const ny=action.dest?action.dest.y:champ.y+action.dir.y;
-    if(isWalkable(nx,ny)){champ.x=nx;champ.y=ny;}
+    if(isWalkable(nx,ny)&&!isOccupied(nx,ny)){champ.x=nx;champ.y=ny;}
   }
   else if(action.type==='attack'){
     const tx=action.target.x,ty=action.target.y;
@@ -862,8 +875,8 @@ function tibbersAI(){
       if(!enemy.alive)log('🧸 티버가 챔피언 처치!','log-kill');
     }else if(enemy.alive){
       const dx=Math.sign(enemy.x-tib.x),dy=Math.sign(enemy.y-tib.y);
-      if(dx!==0&&isWalkable(tib.x+dx,tib.y))tib.x+=dx;
-      else if(dy!==0&&isWalkable(tib.x,tib.y+dy))tib.y+=dy;
+      if(dx!==0&&isFree(tib.x+dx,tib.y))tib.x+=dx;
+      else if(dy!==0&&isFree(tib.x,tib.y+dy))tib.y+=dy;
     }
   }
 }
@@ -905,13 +918,13 @@ function renderMap(){
     if(state.targetMode.type==='flash'){
       for(let y2=1;y2<ROWS-1;y2++)for(let x2=1;x2<COLS-1;x2++){
         const d=dist({x:p.x,y:p.y},{x:x2,y:y2});
-        if(d>=1&&d<=FLASH_RANGE&&isWalkable(x2,y2))moveCells.add(x2+','+y2);
+        if(d>=1&&d<=FLASH_RANGE&&isFree(x2,y2))moveCells.add(x2+','+y2);
       }
     }else if(state.targetMode.type==='move'){
       const mRange=1+(p.bonusMoveRange||0);
       for(let dy=-mRange;dy<=mRange;dy++)for(let dx=-mRange;dx<=mRange;dx++){
         if(Math.abs(dx)+Math.abs(dy)<1||Math.abs(dx)+Math.abs(dy)>mRange)continue;
-        const nx=p.x+dx,ny=p.y+dy;if(isWalkable(nx,ny))moveCells.add(nx+','+ny);
+        const nx=p.x+dx,ny=p.y+dy;if(isFree(nx,ny))moveCells.add(nx+','+ny);
       }
     }else if(state.targetMode.type==='attack'){
       // Auto-attack: only cells with visible units

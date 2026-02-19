@@ -22,6 +22,8 @@ h1 { text-align:center; color:#f0c040; margin-bottom:2px; font-size:22px; }
 #map td.walkable { background:#0d0d15; }
 #map td.highlight { background:#333300 !important; border-color:#555500; cursor:pointer; }
 #map td.target-mode { background:#2a0a0a !important; border-color:#552200; cursor:crosshair; }
+#map td.aoe-preview { background:#442200 !important; border-color:#ff6600; box-shadow:inset 0 0 8px rgba(255,100,0,0.4); }
+#map td.aoe-center { background:#663300 !important; border-color:#ff8800; box-shadow:inset 0 0 12px rgba(255,140,0,0.6); }
 #map td.reveal-flash { animation:revealPulse 1s ease-out; }
 #map td .unit { display:block; line-height:1.1; font-size:18px; }
 #map td .sub { font-size:8px; display:block; color:#aaa; }
@@ -474,6 +476,28 @@ function cancelTarget(){
   state.phase='plan';
   state.targetMode=null;
   render();
+}
+function previewAoE(cx,cy){
+  // Clear old previews
+  document.querySelectorAll('#map td.aoe-preview,#map td.aoe-center').forEach(td=>{td.classList.remove('aoe-preview','aoe-center');});
+  if(!state.targetMode||state.targetMode.type!=='skill')return;
+  const skill=ANNIE.skills[state.targetMode.key];
+  const aoeR=skill.aoeRadius||0;
+  if(aoeR<=0){
+    // Single target — just highlight center
+    const td=document.getElementById(`cell-${cx}-${cy}`);
+    if(td)td.classList.add('aoe-center');
+    return;
+  }
+  for(let dy=-aoeR;dy<=aoeR;dy++)for(let dx=-aoeR;dx<=aoeR;dx++){
+    if(Math.abs(dx)+Math.abs(dy)>aoeR)continue;
+    const tx=cx+dx,ty=cy+dy;
+    const td=document.getElementById(`cell-${tx}-${ty}`);
+    if(td){td.classList.add(dx===0&&dy===0?'aoe-center':'aoe-preview');}
+  }
+}
+function clearAoE(){
+  document.querySelectorAll('#map td.aoe-preview,#map td.aoe-center').forEach(td=>{td.classList.remove('aoe-preview','aoe-center');});
 }
 
 // ============ FLASH (점멸) ============
@@ -943,8 +967,10 @@ function renderMap(){
       if(minion&&!content){content=`<span class="minion-marker">🟡</span>`;}
       else if(minion&&content){content+=`<span style="font-size:8px">🟡</span>`;}
 
-      const onclick=(moveCells.has(k)||targetCells.has(k))?`onclick="selectCell(${x},${y})"`:'';
-      html+=`<td class="${cls}" ${onclick}>${content}</td>`;
+      const isTarget=moveCells.has(k)||targetCells.has(k);
+      const onclick=isTarget?`onclick="selectCell(${x},${y})"`:'';
+      const hover=isTarget&&state.targetMode&&state.targetMode.type==='skill'?`onmouseover="previewAoE(${x},${y})" onmouseout="clearAoE()"`:'';
+      html+=`<td id="cell-${x}-${y}" class="${cls}" ${onclick} ${hover}>${content}</td>`;
     }
     html+='</tr>';
   }

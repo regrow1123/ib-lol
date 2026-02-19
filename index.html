@@ -48,6 +48,9 @@ h1 { text-align: center; color: #f0c040; margin-bottom: 2px; font-size: 22px; }
 .skill-badge { font-size: 10px; padding: 2px 5px; border-radius: 3px; background: #1a1a1a; border: 1px solid #444; }
 .skill-badge.on-cd { opacity: 0.35; }
 .skill-badge.ready { border-color: #44ff44; color: #44ff44; }
+.skill-lvlup { display: flex; gap: 4px; margin-top: 4px; }
+.skill-lvlup button { font-size: 10px; padding: 2px 8px; background: #1a1a00; border: 1px solid #f0c040; color: #f0c040; border-radius: 3px; cursor: pointer; font-family: inherit; animation: pulse 0.8s infinite alternate; }
+.skill-lvlup button:hover { background: #333300; }
 
 /* Log */
 #log { background: #0a0a0a; border: 1px solid #333; padding: 8px; height: 150px; overflow-y: auto; margin-bottom: 10px; border-radius: 4px; font-size: 11px; line-height: 1.5; }
@@ -155,48 +158,54 @@ const ANNIE = {
 
 // Level/XP config
 const MAX_LEVEL = 18;
-const XP_PER_LEVEL = [0,280,380,480,580,680,780,880,980,1080,1180,1280,1380,1480,1580,1680,1780,1880]; // cumulative XP needed
+const XP_PER_LEVEL = [0,280,380,480,580,680,780,880,980,1080,1180,1280,1380,1480,1580,1680,1780,1880];
 const MINION_XP = 60;
 const CHAMPION_KILL_XP = 200;
-// Skill points: Q/W unlock at 1, can level up skills. Simplified: auto-level Q>W>E>R at levels
-// Skill levels: max 5 for Q/W/E, max 3 for R. R available at 6,11,16
-function getSkillLevel(champ, key) {
-  const lvl = champ.level;
-  if (key === 'r') {
-    if (lvl >= 16) return 3;
-    if (lvl >= 11) return 2;
-    if (lvl >= 6) return 1;
-    return 0;
-  }
-  // Simple auto-level: distribute points among Q>W>E
-  // Available skill points = level - (R levels)
-  const rLvl = lvl>=16?3:lvl>=11?2:lvl>=6?1:0;
-  let pts = lvl - rLvl;
-  // Q gets priority, then W, then E
-  if (key === 'q') return Math.min(5, Math.ceil(pts / 3 * 1.5));
-  if (key === 'w') return Math.min(5, Math.ceil((pts - Math.min(5, Math.ceil(pts/3*1.5))) / 2));
-  // Simplified: just spread evenly-ish
-  const qLvl = Math.min(5, Math.ceil(pts * 0.5));
-  const wLvl = Math.min(5, Math.ceil((pts - qLvl) * 0.6));
-  return Math.min(5, Math.max(1, pts - qLvl - wLvl));
-}
-// Even simpler: use a fixed skill order like LoL Annie typically levels
-const SKILL_ORDER = ['q','w','q','e','q','r','w','w','q','w','e','r','q','w','e','r','e','e'];
-function getSkillLevels(champLevel) {
-  const levels = {q:0,w:0,e:0,r:0};
-  for (let i = 0; i < Math.min(champLevel, SKILL_ORDER.length); i++) {
-    levels[SKILL_ORDER[i]]++;
-  }
-  return levels;
-}
+const SKILL_MAX = {q:5, w:5, e:5, r:3};
+const R_UNLOCK_LEVELS = [6, 11, 16]; // levels at which R can be leveled
+
 function getSkillDamage(key, skillLvl) {
   const s = ANNIE.skills[key];
-  if (!s.baseDmg) return 0;
-  return s.baseDmg[Math.max(0, Math.min(skillLvl - 1, s.baseDmg.length - 1))] || 0;
+  if (!s.baseDmg || skillLvl <= 0) return 0;
+  return s.baseDmg[Math.min(skillLvl - 1, s.baseDmg.length - 1)] || 0;
 }
 function getSkillShield(skillLvl) {
   const s = ANNIE.skills.e;
-  return s.baseShield[Math.max(0, Math.min(skillLvl - 1, s.baseShield.length - 1))] || 0;
+  if (skillLvl <= 0) return 0;
+  return s.baseShield[Math.min(skillLvl - 1, s.baseShield.length - 1)] || 0;
+}
+function canLevelSkill(champ, key) {
+  if (champ.skillPoints <= 0) return false;
+  if (champ.skillLevels[key] >= SKILL_MAX[key]) return false;
+  if (key === 'r') {
+    // R can only be leveled at 6, 11, 16
+    const rLvl = champ.skillLevels.r;
+    if (rLvl >= 3) return false;
+    if (champ.level < R_UNLOCK_LEVELS[rLvl]) return false;
+    return true;
+  }
+  // Normal skills can't exceed ceil(level/2) ... simplified: just max check
+  return true;
+}
+function levelUpSkill(champ, key) {
+  if (!canLevelSkill(champ, key)) return;
+  champ.skillLevels[key]++;
+  champ.skillPoints--;
+  const cl = champ.team==='blue'?'🔵':'🔴';
+  log(`⬆️ ${cl} ${ANNIE.skills[key].key} 스킬 레벨 업! → Lv.${champ.skillLevels[key]}`, 'log-heal');
+  render();
+}
+// AI auto skill order
+const AI_SKILL_ORDER = ['q','w','q','e','q','r','w','w','q','w','e','r','q','w','e','r','e','e'];
+function aiAutoLevelSkills(champ) {
+  while (champ.skillPoints > 0) {
+    const totalUsed = champ.skillLevels.q + champ.skillLevels.w + champ.skillLevels.e + champ.skillLevels.r;
+    const nextSkill = AI_SKILL_ORDER[totalUsed];
+    if (nextSkill && canLevelSkill(champ, nextSkill)) {
+      champ.skillLevels[nextSkill]++;
+      champ.skillPoints--;
+    } else break;
+  }
 }
 
 // ============ UTIL ============
@@ -209,7 +218,7 @@ let state;
 function createChamp(t, team, x, y) {
   const c = { type:'champion', team, name:t.name, x, y, baseHp:t.hp, baseMp:t.mp, baseAd:t.ad, baseAp:t.ap, baseArmor:t.armor, baseMr:t.mr,
     maxHp:t.hp, hp:t.hp, maxMp:t.mp, mp:t.mp, ad:t.ad, ap:t.ap, armor:t.armor, mr:t.mr,
-    level:1, xp:0, skillLevels:{q:1,w:0,e:0,r:0},
+    level:1, xp:0, skillPoints:1, skillLevels:{q:0,w:0,e:0,r:0},
     passiveStacks:0, shield:0, cooldowns:{q:0,w:0,e:0,r:0}, tibbers:null, gold:0, alive:true, stunned:false };
   recalcStats(c);
   return c;
@@ -221,7 +230,6 @@ function recalcStats(c) {
   c.ad = Math.floor(c.baseAd + ANNIE.adPerLvl * (lvl - 1));
   c.armor = Math.floor(c.baseArmor + ANNIE.armorPerLvl * (lvl - 1));
   c.mr = Math.floor(c.baseMr + ANNIE.mrPerLvl * (lvl - 1));
-  c.skillLevels = getSkillLevels(lvl);
 }
 function grantXP(champ, amount) {
   if (champ.level >= MAX_LEVEL) return;
@@ -229,13 +237,15 @@ function grantXP(champ, amount) {
   while (champ.level < MAX_LEVEL && champ.xp >= XP_PER_LEVEL[champ.level]) {
     champ.xp -= XP_PER_LEVEL[champ.level];
     champ.level++;
+    champ.skillPoints++;
     const oldMaxHp = champ.maxHp, oldMaxMp = champ.maxMp;
     recalcStats(champ);
-    // Heal the HP/MP gained from level up
     champ.hp += champ.maxHp - oldMaxHp;
     champ.mp += champ.maxMp - oldMaxMp;
     const cl = champ.team==='blue'?'🔵':'🔴';
-    log(`⬆️ ${cl} ${champ.name} 레벨 업! Lv.${champ.level}`,'log-heal');
+    log(`⬆️ ${cl} ${champ.name} 레벨 업! Lv.${champ.level} (스킬 포인트 +1)`,'log-heal');
+    // AI auto-levels skills immediately
+    if (champ.team === 'red') aiAutoLevelSkills(champ);
   }
 }
 function createTower(team, x, y) { return { type:'tower', team, x, y, hp:TOWER_HP, maxHp:TOWER_HP, alive:true, ad:TOWER_DMG, range:TOWER_RANGE, armor:0, mr:0 }; }
@@ -251,6 +261,7 @@ function initGame() {
     logs: [], phase: 'action', gameOver: false,
     moveMode: false
   };
+  aiAutoLevelSkills(state.enemy); // AI uses starting skill point
   spawnMinions();
   log(`━━━ 턴 ${state.turn} ━━━`, 'log-turn');
   render();
@@ -647,6 +658,19 @@ function renderStats() {
   };
   renderPanel(state.player,'🔵 Annie (나)','player-stats');
   renderPanel(state.enemy,'🔴 Annie (AI)','enemy-stats');
+
+  // Skill level-up buttons for player
+  const p = state.player;
+  if (p.skillPoints > 0 && p.alive) {
+    let lvlHtml = `<div class="skill-lvlup"><span style="font-size:10px;color:#f0c040;margin-right:4px">⬆️ 스킬 포인트: ${p.skillPoints}</span>`;
+    for (const k of ['q','w','e','r']) {
+      if (canLevelSkill(p, k)) {
+        lvlHtml += `<button onclick="levelUpSkill(state.player,'${k}')">${ANNIE.skills[k].key}↑</button>`;
+      }
+    }
+    lvlHtml += '</div>';
+    document.getElementById('player-stats').innerHTML += lvlHtml;
+  }
 }
 
 function renderActions() {

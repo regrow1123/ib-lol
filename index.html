@@ -205,7 +205,7 @@ function createChamp(team,x,y){
     ad:ANNIE.ad,ap:ANNIE.ap,armor:ANNIE.armor,mr:ANNIE.mr,
     level:1,xp:0,skillPoints:1,skillLevels:{q:0,w:0,e:0,r:0},
     passiveStacks:0,shield:0,cooldowns:{q:0,w:0,e:0,r:0},
-    tibbers:null,gold:0,alive:true,stunned:false,redBuff:0,blueBuff:0,dragonBuff:0,baronBuff:0};
+    tibbers:null,gold:0,alive:true,stunned:false,redBuff:0,blueBuff:0,dragonStacks:0,baronBuff:0};
   recalc(c);return c;
 }
 function recalc(c){
@@ -228,7 +228,11 @@ function grantXP(c,amt){
     if(c.team==='red')aiAutoLvl(c);
   }
 }
-function calcDmg(raw,type,tgt){const d=type==='magic'?(tgt.mr||0):(tgt.armor||0);return Math.max(1,Math.floor(raw*(100/(100+d))));}
+function calcDmg(raw,type,tgt){
+  const ds=(tgt.dragonStacks||0)*3;
+  const d=type==='magic'?(tgt.mr||0)+ds:(tgt.armor||0)+ds;
+  return Math.max(1,Math.floor(raw*(100/(100+d))));
+}
 function applyDmg(tgt,amt){
   if(tgt.shield>0){if(tgt.shield>=amt){tgt.shield-=amt;return 0;}amt-=tgt.shield;tgt.shield=0;}
   tgt.hp=Math.max(0,tgt.hp-amt);if(tgt.hp<=0)tgt.alive=false;return amt;
@@ -499,7 +503,7 @@ function executeTurn(){
   [state.player,state.enemy].forEach(c=>{
     if(c.redBuff&&c.redBuff>0){c.redBuff--;if(c.redBuff===0)log(`${c.team==='blue'?'🔵':'🔴'} 레드 버프 만료`,'log-info');}
     if(c.blueBuff&&c.blueBuff>0){c.blueBuff--;if(c.blueBuff===0)log(`${c.team==='blue'?'🔵':'🔴'} 블루 버프 만료`,'log-info');}
-    if(c.dragonBuff&&c.dragonBuff>0){c.dragonBuff--;if(c.dragonBuff===0)log(`${c.team==='blue'?'🔵':'🔴'} 드래곤 버프 만료`,'log-info');}
+    // dragonStacks는 영구 — tick 불필요
     if(c.baronBuff&&c.baronBuff>0){c.baronBuff--;if(c.baronBuff===0)log(`${c.team==='blue'?'🔵':'🔴'} 바론 버프 만료`,'log-info');}
   });
 
@@ -548,7 +552,7 @@ function executeAction(champ,action){
     // Check enemy champion at target
     const enemy=champ.team==='blue'?state.enemy:state.player;
     if(enemy.alive&&enemy.x===tx&&enemy.y===ty){
-      const atkAd=champ.ad+(champ.redBuff>0?15:0);
+      const atkAd=champ.ad+(champ.redBuff>0?15:0)+(champ.dragonStacks||0)*5;
       const dmg=calcDmg(atkAd,'physical',enemy);
       applyDmg(enemy,dmg);
       const cl=champ.team==='blue'?'🔵':'🔴',tl=enemy.team==='blue'?'🔵':'🔴';
@@ -586,10 +590,11 @@ function executeAction(champ,action){
       if(epic.hp<=0){
         epic.alive=false;epic.lastKillTurn=state.turn;
         if(epic.epicType==='dragon'){
-          champ.dragonBuff=DRAGON_BUFF_DURATION;
+          champ.dragonStacks=(champ.dragonStacks||0)+1;
           const dheal=Math.floor(champ.maxHp*0.1);champ.hp=Math.min(champ.maxHp,champ.hp+dheal);
           grantXP(champ,DRAGON_XP);champ.gold+=DRAGON_GOLD;
-          log(`${cl3} 🐉 드래곤 처치! HP+${dheal} 회복, AP+20, 스킬강화 (${DRAGON_BUFF_DURATION}턴)`,'log-kill');
+          const ds=champ.dragonStacks;
+          log(`${cl3} 🐉 드래곤 처치! (${ds}중첩) HP회복+${dheal}, AD+${ds*5}, AP+${ds*10}, 방어+${ds*3}`,'log-kill');
         } else {
           champ.baronBuff=BARON_BUFF_DURATION;
           grantXP(champ,BARON_XP);champ.gold+=BARON_GOLD;
@@ -631,7 +636,7 @@ function execSkill(caster,key,target){
   if(!target)return;
   if(dist({x:caster.x,y:caster.y},target)>skill.range)return;
 
-  let raw=getSkillDmg(key,sLvl)+caster.ap+(caster.dragonBuff>0?20:0);
+  let raw=getSkillDmg(key,sLvl)+caster.ap+(caster.dragonStacks||0)*10;
   if(caster.baronBuff>0)raw=Math.floor(raw*1.3); // baron: +30% skill dmg
   const enemy=caster.team==='blue'?state.enemy:state.player;
   const aoeR=skill.aoeRadius||0;
@@ -669,10 +674,11 @@ function execSkill(caster,key,target){
     if(e.hp<=0){
       e.alive=false;e.lastKillTurn=state.turn;
       if(e.epicType==='dragon'){
-        caster.dragonBuff=DRAGON_BUFF_DURATION;
+        caster.dragonStacks=(caster.dragonStacks||0)+1;
         const dheal2=Math.floor(caster.maxHp*0.1);caster.hp=Math.min(caster.maxHp,caster.hp+dheal2);
         grantXP(caster,DRAGON_XP);caster.gold+=DRAGON_GOLD;
-        log(`${cl} 🐉 드래곤 처치! HP+${dheal2} 회복, AP+20 (${DRAGON_BUFF_DURATION}턴)`,'log-kill');
+        const ds2=caster.dragonStacks;
+        log(`${cl} 🐉 드래곤 처치! (${ds2}중첩) HP회복+${dheal2}, AD+${ds2*5}, AP+${ds2*10}, 방어+${ds2*3}`,'log-kill');
       } else {
         caster.baronBuff=BARON_BUFF_DURATION;
         grantXP(caster,BARON_XP);caster.gold+=BARON_GOLD;
@@ -868,7 +874,7 @@ function renderStats(){
         <div class="bar-container bar-hp"><div class="bar-fill" style="width:${hpPct}%"></div><div class="bar-label">❤️ ${c.hp}/${c.maxHp}${c.shield>0?' 🛡️'+c.shield:''}</div></div>
         <div class="bar-container bar-mp"><div class="bar-fill" style="width:${mpPct}%"></div><div class="bar-label">💧 ${c.mp}/${c.maxMp}</div></div>
         <div class="bar-container" style="height:10px;margin-bottom:4px"><div class="bar-fill" style="width:${xpP}%;background:linear-gradient(90deg,#8844aa,#cc66ff)"></div><div class="bar-label" style="font-size:8px">⭐ ${c.level<MAX_LEVEL?c.xp+'/'+xpN:'MAX'}</div></div>
-        <div class="passive-bar">🔥 ${stacks}${c.redBuff>0?` <span style="color:#ff4444;font-size:10px">🔴레드(${c.redBuff})</span>`:''}${c.blueBuff>0?` <span style="color:#4488ff;font-size:10px">🔵블루(${c.blueBuff})</span>`:''}${c.dragonBuff>0?` <span style="color:#ff8800;font-size:10px">🐉드래곤(${c.dragonBuff})</span>`:''}${c.baronBuff>0?` <span style="color:#cc44ff;font-size:10px">👿바론(${c.baronBuff})</span>`:''}</div>
+        <div class="passive-bar">🔥 ${stacks}${c.redBuff>0?` <span style="color:#ff4444;font-size:10px">🔴레드(${c.redBuff})</span>`:''}${c.blueBuff>0?` <span style="color:#4488ff;font-size:10px">🔵블루(${c.blueBuff})</span>`:''}${(c.dragonStacks||0)>0?` <span style="color:#ff8800;font-size:10px">🐉드래곤x${c.dragonStacks}</span>`:''}${c.baronBuff>0?` <span style="color:#cc44ff;font-size:10px">👿바론(${c.baronBuff})</span>`:''}</div>
         <div class="skill-row">${badges}</div>
         ${c.stunned?'<div style="color:#ff44ff;margin-top:3px;font-size:11px">⚡ 스턴!</div>':''}
       `;

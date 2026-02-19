@@ -140,14 +140,14 @@ for(let y=0;y<ROWS;y++){MAP[y]=[];for(let x=0;x<COLS;x++){MAP[y][x]=(x===0||x===
 
 // Fixed minion positions (symmetrical)
 const MINION_POSITIONS=[
-  {x:3,y:1},{x:5,y:2},{x:3,y:3},{x:5,y:4},{x:3,y:5},
+  {x:5,y:2},{x:3,y:3},{x:5,y:4},{x:3,y:5},
   {x:7,y:1},{x:7,y:3},{x:7,y:5},
-  {x:11,y:1},{x:9,y:2},{x:11,y:3},{x:9,y:4},{x:11,y:5},
+  {x:9,y:2},{x:11,y:3},{x:9,y:4},{x:11,y:1},
 ];
-// Buff monsters
+// Buff monsters (좌상단, 우하단)
 const BUFF_POSITIONS=[
-  {x:2,y:3,type:'red'},   // Red buff - left side
-  {x:12,y:3,type:'blue'},  // Blue buff - right side
+  {x:3,y:1,type:'red'},    // Red buff - 좌상단
+  {x:11,y:5,type:'blue'},  // Blue buff - 우하단
 ];
 const BUFF_RESPAWN=15; // respawn every 15 turns
 const BUFF_DURATION=10; // buff lasts 10 turns

@@ -236,7 +236,8 @@ function createChamp(team,x,y){
     level:1,xp:0,skillPoints:1,skillLevels:{q:0,w:0,e:0,r:0},
     passiveStacks:0,shield:0,cooldowns:{q:0,w:0,e:0,r:0},
     tibbers:null,gold:0,alive:true,stunned:false,redBuff:0,blueBuff:0,dragonStacks:0,baronBuff:0,
-    items:[],bonusAd:0,bonusAp:0,bonusHp:0,bonusArmor:0,bonusMr:0,bonusMoveRange:0};
+    items:[],bonusAd:0,bonusAp:0,bonusHp:0,bonusArmor:0,bonusMr:0,bonusMoveRange:0,
+    flashCd:0};
   recalc(c);return c;
 }
 function recalc(c){
@@ -368,17 +369,34 @@ function aiDecideReaction(playerAction){
   // AI only knows player position if revealed recently
   const knowsPlayer=state.lastRevealTurn>0&&(state.turn-state.lastRevealTurn)<=2;
 
-  // If player is attacking a cell near AI, try to dodge
+  // If player is attacking a cell near AI, try to dodge (or flash)
   if(playerAction&&(playerAction.type==='attack'||playerAction.type==='skill')&&playerAction.target){
     const t=playerAction.target;
     const d=dist({x:ai.x,y:ai.y},t);
     const aoe=(playerAction.type==='skill'&&ANNIE.skills[playerAction.key]?.aoeRadius)||0;
     if(d<=aoe){
+      // Try normal move first
       const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
       for(const[dx,dy]of dirs){
         const nx=ai.x+dx,ny=ai.y+dy;
         if(isWalkable(nx,ny)&&dist({x:nx,y:ny},t)>aoe){
           return{type:'move',dir:{x:dx,y:dy},desc:'🚶 이동'};
+        }
+      }
+      // Can't dodge by walking — flash if available and skill is dangerous
+      if(ai.flashCd===0&&(playerAction.type==='skill'||ai.hp<ai.maxHp*0.3)){
+        // Find safe flash destination far from target
+        let bestDest=null,bestD=0;
+        for(let fy=1;fy<ROWS-1;fy++)for(let fx=1;fx<COLS-1;fx++){
+          const fd=dist({x:ai.x,y:ai.y},{x:fx,y:fy});
+          if(fd>=1&&fd<=FLASH_RANGE&&isWalkable(fx,fy)){
+            const safety=dist({x:fx,y:fy},t);
+            if(safety>aoe&&safety>bestD){bestD=safety;bestDest={x:fx,y:fy};}
+          }
+        }
+        if(bestDest){
+          execFlash(ai,bestDest.x,bestDest.y);
+          return{type:'wait',desc:'✨ 점멸 회피!'};
         }
       }
     }
@@ -479,7 +497,14 @@ function selectCell(x,y){
   const tm=state.targetMode;
   const p=state.player;
 
-  if(tm.type==='move'){
+  if(tm.type==='flash'){
+    if(dist({x:p.x,y:p.y},{x,y})>FLASH_RANGE||dist({x:p.x,y:p.y},{x,y})<1)return;
+    if(!isWalkable(x,y))return;
+    execFlash(p,x,y);
+    state.phase='plan';
+    state.targetMode=null;
+    render();return;
+  } else if(tm.type==='move'){
     const dx=x-p.x,dy=y-p.y;
     const mRange=1+(p.bonusMoveRange||0);
     if(Math.abs(dx)+Math.abs(dy)>mRange||Math.abs(dx)+Math.abs(dy)<1)return;
@@ -501,6 +526,28 @@ function cancelTarget(){
   state.phase='plan';
   state.targetMode=null;
   render();
+}
+
+// ============ FLASH (점멸) ============
+const FLASH_CD=24;
+const FLASH_RANGE=3;
+function setPlayerFlash(){
+  if(state.player.flashCd>0||!state.player.alive||state.player.stunned)return;
+  state.phase='target';
+  state.targetMode={type:'flash',range:FLASH_RANGE};
+  render();
+}
+function execFlash(champ,x,y){
+  if(champ.flashCd>0||!champ.alive)return false;
+  if(!isWalkable(x,y))return false;
+  if(dist({x:champ.x,y:champ.y},{x,y})>FLASH_RANGE||dist({x:champ.x,y:champ.y},{x,y})<1)return false;
+  const cl=champ.team==='blue'?'🔵':'🔴';
+  champ.x=x;champ.y=y;
+  champ.flashCd=FLASH_CD;
+  log(`✨ ${cl} 점멸!`,'log-info');
+  // Flash effect
+  ultFlash('rgba(255,255,100,0.3)');
+  return true;
 }
 
 function toggleShop(){
@@ -579,6 +626,7 @@ function executeTurn(){
 
   // Cooldown tick
   for(let k of['q','w','e','r']){if(p.cooldowns[k]>0)p.cooldowns[k]--;if(e.cooldowns[k]>0)e.cooldowns[k]--;}
+  if(p.flashCd>0)p.flashCd--;if(e.flashCd>0)e.flashCd--;
   p.stunned=false;e.stunned=false;
   p.mp=Math.min(p.maxMp,p.mp+(p.blueBuff>0?20:10));
   e.mp=Math.min(e.maxMp,e.mp+(e.blueBuff>0?20:10));
@@ -880,7 +928,12 @@ function renderMap(){
   const targetCells=new Set();
   const moveCells=new Set();
   if(state.targetMode){
-    if(state.targetMode.type==='move'){
+    if(state.targetMode.type==='flash'){
+      for(let y2=1;y2<ROWS-1;y2++)for(let x2=1;x2<COLS-1;x2++){
+        const d=dist({x:p.x,y:p.y},{x:x2,y:y2});
+        if(d>=1&&d<=FLASH_RANGE&&isWalkable(x2,y2))moveCells.add(x2+','+y2);
+      }
+    }else if(state.targetMode.type==='move'){
       const mRange=1+(p.bonusMoveRange||0);
       for(let dy=-mRange;dy<=mRange;dy++)for(let dx=-mRange;dx<=mRange;dx++){
         if(Math.abs(dx)+Math.abs(dy)<1||Math.abs(dx)+Math.abs(dy)>mRange)continue;
@@ -1049,7 +1102,8 @@ function renderActions(){
 
   if(state.targetMode){
     let label='';
-    if(state.targetMode.type==='move')label='이동할 칸을 선택하세요';
+    if(state.targetMode.type==='flash')label='✨ 점멸할 위치를 선택하세요';
+    else if(state.targetMode.type==='move')label='이동할 칸을 선택하세요';
     else if(state.targetMode.type==='attack')label='공격할 좌표를 선택하세요';
     else label=`${ANNIE.skills[state.targetMode.key].key} 대상 좌표를 선택하세요`;
     el.innerHTML=`<span style="color:#f0c040;font-size:12px">${label}</span> <button class="cancel" onclick="cancelTarget()">❌ 취소</button>`;
@@ -1063,9 +1117,11 @@ function renderActions(){
   }
 
   const can=k=>p.skillLevels[k]>0&&p.cooldowns[k]===0&&p.mp>=ANNIE.skills[k].manaCost;
+  const flashReady=p.flashCd===0;
   let html=`
     <button class="move" onclick="setPlayerMove()">🚶 이동</button>
     <button class="attack" onclick="setPlayerAttack()">⚔️ 평타</button>
+    <button style="border-color:${flashReady?'#ffff44':'#555'};${flashReady?'color:#ffff44':'opacity:0.35'}" onclick="setPlayerFlash()" ${!flashReady?'disabled':''}>✨ 점멸${p.flashCd>0?' ('+p.flashCd+')':''}</button>
     <button style="border-color:#f0c040" onclick="toggleShop()">🛒 상점 (💰${p.gold}G)</button>
     <button class="skill-q" onclick="setPlayerSkill('q')" ${!can('q')?'disabled':''}>Q 붕괴</button>
     <button class="skill-w" onclick="setPlayerSkill('w')" ${!can('w')?'disabled':''}>W 소각</button>

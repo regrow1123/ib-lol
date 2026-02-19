@@ -159,7 +159,7 @@ const EPIC_POSITIONS=[
   {x:11,y:1,type:'baron'},  // 바론 - 우상단
 ];
 const EPIC_RESPAWN=20;
-const EPIC_HP=8; // 8 hits to kill
+const DRAGON_HP=5, BARON_HP=8;
 const DRAGON_XP=400, DRAGON_GOLD=100;
 const BARON_XP=500, BARON_GOLD=150;
 const DRAGON_BUFF_DURATION=15; // 드래곤: 전 스탯 강화
@@ -245,7 +245,7 @@ function initGame(){
     enemy:createChamp('red',12,3),
     minions:MINION_POSITIONS.map((p,i)=>({type:'minion',x:p.x,y:p.y,alive:true,id:i})),
     buffs:BUFF_POSITIONS.map(b=>({type:'buff',buffType:b.type,x:b.x,y:b.y,alive:true,hp:3,maxHp:3,armor:10,mr:10,lastKillTurn:0})),
-    epics:EPIC_POSITIONS.map(e=>({type:'epic',epicType:e.type,x:e.x,y:e.y,alive:true,hp:EPIC_HP,maxHp:EPIC_HP,armor:20,mr:20,lastKillTurn:0})),
+    epics:EPIC_POSITIONS.map(e=>{const h=e.type==='dragon'?DRAGON_HP:BARON_HP;return{type:'epic',epicType:e.type,x:e.x,y:e.y,alive:true,hp:h,maxHp:h,armor:20,mr:20,lastKillTurn:0};}),
     tibbersList:[],
     logs:[],
     // Phase: 'plan' = choosing action, 'target' = choosing target cell

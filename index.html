@@ -144,6 +144,14 @@ const MINION_POSITIONS=[
   {x:7,y:1},{x:7,y:3},{x:7,y:5},
   {x:11,y:1},{x:9,y:2},{x:11,y:3},{x:9,y:4},{x:11,y:5},
 ];
+// Buff monsters
+const BUFF_POSITIONS=[
+  {x:2,y:3,type:'red'},   // Red buff - left side
+  {x:12,y:3,type:'blue'},  // Blue buff - right side
+];
+const BUFF_RESPAWN=15; // respawn every 15 turns
+const BUFF_DURATION=10; // buff lasts 10 turns
+const BUFF_XP=200, BUFF_GOLD=50;
 
 const ANNIE={
   name:'Annie',hp:560,mp:418,ad:50,ap:0,armor:19,mr:30,
@@ -185,7 +193,7 @@ function createChamp(team,x,y){
     ad:ANNIE.ad,ap:ANNIE.ap,armor:ANNIE.armor,mr:ANNIE.mr,
     level:1,xp:0,skillPoints:1,skillLevels:{q:0,w:0,e:0,r:0},
     passiveStacks:0,shield:0,cooldowns:{q:0,w:0,e:0,r:0},
-    tibbers:null,gold:0,alive:true,stunned:false};
+    tibbers:null,gold:0,alive:true,stunned:false,redBuff:0,blueBuff:0};
   recalc(c);return c;
 }
 function recalc(c){
@@ -220,6 +228,7 @@ function initGame(){
     player:createChamp('blue',2,3),
     enemy:createChamp('red',12,3),
     minions:MINION_POSITIONS.map((p,i)=>({type:'minion',x:p.x,y:p.y,alive:true,id:i})),
+    buffs:BUFF_POSITIONS.map(b=>({type:'buff',buffType:b.type,x:b.x,y:b.y,alive:true,hp:3,maxHp:3,armor:10,mr:10,lastKillTurn:0})),
     tibbersList:[],
     logs:[],
     // Phase: 'plan' = choosing action, 'target' = choosing target cell
@@ -448,14 +457,28 @@ function executeTurn(){
   // Cooldown tick
   for(let k of['q','w','e','r']){if(p.cooldowns[k]>0)p.cooldowns[k]--;if(e.cooldowns[k]>0)e.cooldowns[k]--;}
   p.stunned=false;e.stunned=false;
-  p.mp=Math.min(p.maxMp,p.mp+10);
-  e.mp=Math.min(e.maxMp,e.mp+10);
+  p.mp=Math.min(p.maxMp,p.mp+(p.blueBuff>0?20:10));
+  e.mp=Math.min(e.maxMp,e.mp+(e.blueBuff>0?20:10));
 
   // Minion respawn
   if(state.turn%MINION_RESPAWN_INTERVAL===0){
     spawnMinions();
     log('🔄 미니언 리젠!','log-info');
   }
+
+  // Buff respawn
+  state.buffs.forEach(b=>{
+    if(!b.alive&&b.lastKillTurn>0&&(state.turn-b.lastKillTurn)>=BUFF_RESPAWN){
+      b.alive=true;b.hp=b.maxHp;
+      log(`💎 ${b.buffType==='red'?'🔴 레드':'🔵 블루'} 버프 몬스터 리젠!`,'log-info');
+    }
+  });
+
+  // Tick buff durations
+  [state.player,state.enemy].forEach(c=>{
+    if(c.redBuff&&c.redBuff>0){c.redBuff--;if(c.redBuff===0)log(`${c.team==='blue'?'🔵':'🔴'} 레드 버프 만료`,'log-info');}
+    if(c.blueBuff&&c.blueBuff>0){c.blueBuff--;if(c.blueBuff===0)log(`${c.team==='blue'?'🔵':'🔴'} 블루 버프 만료`,'log-info');}
+  });
 
   // Reveal check
   if(state.turn%REVEAL_INTERVAL===0){
@@ -502,15 +525,34 @@ function executeAction(champ,action){
     // Check enemy champion at target
     const enemy=champ.team==='blue'?state.enemy:state.player;
     if(enemy.alive&&enemy.x===tx&&enemy.y===ty){
-      const dmg=calcDmg(champ.ad,'physical',enemy);
+      const atkAd=champ.ad+(champ.redBuff>0?15:0);
+      const dmg=calcDmg(atkAd,'physical',enemy);
       applyDmg(enemy,dmg);
       const cl=champ.team==='blue'?'🔵':'🔴',tl=enemy.team==='blue'?'🔵':'🔴';
-      log(`${cl} 평타 적중! → ${tl} ${dmg} 피해`,'log-dmg');
+      let dmgLog=`${cl} 평타 적중! → ${tl} ${dmg} 피해`;
+      if(champ.redBuff>0){const burn=Math.max(1,Math.floor(dmg*0.15));applyDmg(enemy,burn);dmgLog+=` +🔥${burn}`;}
+      log(dmgLog,'log-dmg');
       if(!enemy.alive){champ.gold+=300;grantXP(champ,CHAMPION_KILL_XP);log(`${cl} 챔피언 처치!`,'log-kill');}
     }
     else if(!minion){
       const cl=champ.team==='blue'?'🔵':'🔴';
       log(`${cl} 평타 빗나감 (${tx},${ty})`,'log-miss');
+    }
+
+    // Check buff monster at target
+    const buff=state.buffs.find(b=>b.alive&&b.x===tx&&b.y===ty);
+    if(buff){
+      buff.hp--;
+      const cl2=champ.team==='blue'?'🔵':'🔴';
+      if(buff.hp<=0){
+        buff.alive=false;buff.lastKillTurn=state.turn;
+        if(buff.buffType==='red'){champ.redBuff=BUFF_DURATION;log(`${cl2} 🔴 레드 버프 획득! (AD+15, 평타 화상)`,`log-kill`);}
+        else{champ.blueBuff=BUFF_DURATION;log(`${cl2} 🔵 블루 버프 획득! (마나 회복 2배)`,`log-kill`);}
+        grantXP(champ,BUFF_XP);champ.gold+=BUFF_GOLD;
+        log(`${cl2} +${BUFF_XP}XP +${BUFF_GOLD}G`,'log-kill');
+      } else {
+        log(`${cl2} 버프 몬스터 공격 (${buff.hp}/${buff.maxHp})`,'log-dmg');
+      }
     }
 
     // Check tibbers at target
@@ -573,6 +615,17 @@ function execSkill(caster,key,target){
   state.minions.filter(m=>m.alive&&dist(target,{x:m.x,y:m.y})<=aoeR).forEach(m=>{
     m.alive=false;grantXP(caster,MINION_XP);caster.gold+=MINION_GOLD;
     log(`${cl} 미니언 처치 (${m.x},${m.y}) +${MINION_GOLD}G`,'log-kill');
+  });
+
+  // Check buff monsters in AoE
+  state.buffs.filter(b=>b.alive&&dist(target,{x:b.x,y:b.y})<=aoeR).forEach(b=>{
+    b.hp--;
+    if(b.hp<=0){
+      b.alive=false;b.lastKillTurn=state.turn;
+      if(b.buffType==='red'){caster.redBuff=BUFF_DURATION;log(`${cl} 🔴 레드 버프 획득!`,'log-kill');}
+      else{caster.blueBuff=BUFF_DURATION;log(`${cl} 🔵 블루 버프 획득!`,'log-kill');}
+      grantXP(caster,BUFF_XP);caster.gold+=BUFF_GOLD;
+    }
   });
 
   // Check tibbers
@@ -696,6 +749,11 @@ function renderMap(){
         content=`<span class="unit">😈</span><span class="sub">🔴</span>`;
       }
 
+      // Buff monsters
+      const buff=state.buffs.find(b=>b.alive&&b.x===x&&b.y===y);
+      if(buff&&!content){content=`<span class="unit">${buff.buffType==='red'?'🔴':'🔵'}</span><span class="sub">${buff.hp}/${buff.maxHp}</span>`;}
+      else if(buff&&content){content+=`<span style="font-size:8px">${buff.buffType==='red'?'🔴':'🔵'}</span>`;}
+
       // Minions
       const minion=state.minions.find(m=>m.alive&&m.x===x&&m.y===y);
       if(minion&&!content){content=`<span class="minion-marker">🟡</span>`;}
@@ -726,7 +784,7 @@ function renderStats(){
         <div class="bar-container bar-hp"><div class="bar-fill" style="width:${hpPct}%"></div><div class="bar-label">❤️ ${c.hp}/${c.maxHp}${c.shield>0?' 🛡️'+c.shield:''}</div></div>
         <div class="bar-container bar-mp"><div class="bar-fill" style="width:${mpPct}%"></div><div class="bar-label">💧 ${c.mp}/${c.maxMp}</div></div>
         <div class="bar-container" style="height:10px;margin-bottom:4px"><div class="bar-fill" style="width:${xpP}%;background:linear-gradient(90deg,#8844aa,#cc66ff)"></div><div class="bar-label" style="font-size:8px">⭐ ${c.level<MAX_LEVEL?c.xp+'/'+xpN:'MAX'}</div></div>
-        <div class="passive-bar">🔥 ${stacks}</div>
+        <div class="passive-bar">🔥 ${stacks}${c.redBuff>0?` <span style="color:#ff4444;font-size:10px">🔴레드(${c.redBuff})</span>`:''}${c.blueBuff>0?` <span style="color:#4488ff;font-size:10px">🔵블루(${c.blueBuff})</span>`:''}</div>
         <div class="skill-row">${badges}</div>
         ${c.stunned?'<div style="color:#ff44ff;margin-top:3px;font-size:11px">⚡ 스턴!</div>':''}
       `;

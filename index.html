@@ -658,8 +658,12 @@ function renderMap(){
   }
 
   let html='<table>';
+  // Column headers
+  html+='<tr><td class="wall" style="width:24px;height:24px;font-size:9px;color:#555"></td>';
+  for(let x=0;x<COLS;x++)html+=`<td class="wall" style="height:24px;font-size:9px;color:#555;border:none">${x}</td>`;
+  html+='</tr>';
   for(let y=0;y<ROWS;y++){
-    html+='<tr>';
+    html+=`<tr><td class="wall" style="width:24px;font-size:9px;color:#555;border:none">${y}</td>`;
     for(let x=0;x<COLS;x++){
       const w=MAP[y][x]===0;
       let cls=w?'wall':'walkable';

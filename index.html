@@ -5,115 +5,119 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ib-lol</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0a0a1a; color: #e0e0e0; font-family: 'Courier New', monospace; font-size: 14px; overflow-x: hidden; }
-#game { max-width: 960px; margin: 0 auto; padding: 16px; position: relative; }
-h1 { text-align: center; color: #f0c040; margin-bottom: 2px; font-size: 22px; }
-.subtitle { text-align: center; color: #888; margin-bottom: 12px; font-size: 11px; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a1a; color:#e0e0e0; font-family:'Courier New',monospace; font-size:14px; overflow-x:hidden; }
+#game { max-width:960px; margin:0 auto; padding:16px; position:relative; }
+h1 { text-align:center; color:#f0c040; margin-bottom:2px; font-size:22px; }
+.subtitle { text-align:center; color:#888; margin-bottom:12px; font-size:11px; }
 
-/* Grid map */
-#map { display: flex; justify-content: center; margin-bottom: 12px; }
-#map table { border-collapse: collapse; }
+/* Map */
+#map { display:flex; justify-content:center; margin-bottom:12px; }
+#map table { border-collapse:collapse; }
 #map td {
-  width: 52px; height: 52px; border: 1px solid #222; text-align: center; vertical-align: middle;
-  font-size: 18px; position: relative; background: #0d0d0d; cursor: default;
-  transition: background 0.15s;
+  width:48px; height:48px; border:1px solid #1a1a1a; text-align:center; vertical-align:middle;
+  font-size:16px; background:#0d0d15; cursor:default; transition:background 0.15s; position:relative;
 }
-#map td.lane { background: #111a11; border-color: #1a2a1a; }
-#map td.grass { background: #0a1a0a; border-color: #1a2a1a; }
-#map td.wall { background: #1a1a1a; border-color: #222; }
-#map td.tower-blue { background: #0a0a2a; border-color: #224; }
-#map td.tower-red { background: #2a0a0a; border-color: #422; }
-#map td.highlight { background: #333300 !important; border-color: #555500; cursor: pointer; }
-#map td .unit { display: block; line-height: 1.2; }
-#map td .sub { font-size: 9px; display: block; color: #aaa; }
-#map td .hp-mini { font-size: 8px; color: #4f4; }
+#map td.wall { background:#111; }
+#map td.walkable { background:#0d0d15; }
+#map td.highlight { background:#333300 !important; border-color:#555500; cursor:pointer; }
+#map td.target-mode { background:#2a0a0a !important; border-color:#552200; cursor:crosshair; }
+#map td.reveal-flash { animation:revealPulse 1s ease-out; }
+#map td .unit { display:block; line-height:1.1; font-size:18px; }
+#map td .sub { font-size:8px; display:block; color:#aaa; }
+#map td .minion-marker { font-size:14px; }
+#map td .ghost { opacity:0.35; }
 
 /* Stats */
-.stats-row { display: flex; gap: 8px; margin-bottom: 10px; }
-.stat-panel { flex: 1; background: #111; border: 1px solid #333; padding: 10px; border-radius: 4px; }
-.stat-panel.player { border-color: #4488ff; }
-.stat-panel.enemy { border-color: #ff4444; }
-.stat-panel h3 { margin-bottom: 6px; font-size: 13px; }
-.bar-container { background: #222; border-radius: 3px; height: 18px; position: relative; margin-bottom: 4px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
-.bar-hp .bar-fill { background: linear-gradient(90deg, #22aa22, #44ff44); }
-.bar-mp .bar-fill { background: linear-gradient(90deg, #2244aa, #4488ff); }
-.bar-label { position: absolute; top: 0; left: 0; right: 0; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; text-shadow: 1px 1px 2px #000; }
-.passive-bar { font-size: 11px; margin-top: 3px; }
-.passive-bar .stack { display: inline-block; width: 12px; height: 12px; border: 1px solid #666; border-radius: 2px; margin-right: 2px; }
-.passive-bar .stack.filled { background: #ff6600; border-color: #ff8800; }
-.passive-bar .stack.ready { background: #ff00ff; border-color: #ff44ff; animation: pulse 0.5s infinite alternate; }
-.skill-row { display: flex; gap: 4px; margin-top: 4px; }
-.skill-badge { font-size: 10px; padding: 2px 5px; border-radius: 3px; background: #1a1a1a; border: 1px solid #444; }
-.skill-badge.on-cd { opacity: 0.35; }
-.skill-badge.ready { border-color: #44ff44; color: #44ff44; }
-.skill-lvlup { display: flex; gap: 4px; margin-top: 4px; }
-.skill-lvlup button { font-size: 10px; padding: 2px 8px; background: #1a1a00; border: 1px solid #f0c040; color: #f0c040; border-radius: 3px; cursor: pointer; font-family: inherit; animation: pulse 0.8s infinite alternate; }
-.skill-lvlup button:hover { background: #333300; }
+.stats-row { display:flex; gap:8px; margin-bottom:10px; }
+.stat-panel { flex:1; background:#111; border:1px solid #333; padding:10px; border-radius:4px; }
+.stat-panel.player { border-color:#4488ff; }
+.stat-panel.enemy { border-color:#ff4444; }
+.stat-panel h3 { margin-bottom:6px; font-size:13px; }
+.bar-container { background:#222; border-radius:3px; height:18px; position:relative; margin-bottom:4px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:3px; transition:width 0.3s; }
+.bar-hp .bar-fill { background:linear-gradient(90deg,#22aa22,#44ff44); }
+.bar-mp .bar-fill { background:linear-gradient(90deg,#2244aa,#4488ff); }
+.bar-label { position:absolute; top:0; left:0; right:0; height:100%; display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; text-shadow:1px 1px 2px #000; }
+.passive-bar { font-size:11px; margin-top:3px; }
+.passive-bar .stack { display:inline-block; width:12px; height:12px; border:1px solid #666; border-radius:2px; margin-right:2px; }
+.passive-bar .stack.filled { background:#ff6600; border-color:#ff8800; }
+.passive-bar .stack.ready { background:#ff00ff; border-color:#ff44ff; animation:pulse 0.5s infinite alternate; }
+.skill-row { display:flex; gap:4px; margin-top:4px; }
+.skill-badge { font-size:10px; padding:2px 5px; border-radius:3px; background:#1a1a1a; border:1px solid #444; }
+.skill-badge.on-cd { opacity:0.35; }
+.skill-badge.ready { border-color:#44ff44; color:#44ff44; }
+.skill-lvlup { display:flex; gap:4px; margin-top:4px; }
+.skill-lvlup button { font-size:10px; padding:2px 8px; background:#1a1a00; border:1px solid #f0c040; color:#f0c040; border-radius:3px; cursor:pointer; font-family:inherit; animation:pulse 0.8s infinite alternate; }
+.skill-lvlup button:hover { background:#333300; }
+.enemy-unknown { color:#666; font-style:italic; font-size:11px; }
 
-/* Log */
-#log { background: #0a0a0a; border: 1px solid #333; padding: 8px; height: 150px; overflow-y: auto; margin-bottom: 10px; border-radius: 4px; font-size: 11px; line-height: 1.5; }
-.log-turn { color: #f0c040; font-weight: bold; }
-.log-dmg { color: #ff6644; }
-.log-heal { color: #44ff44; }
-.log-info { color: #88aaff; }
-.log-kill { color: #ff44ff; }
-.log-ult { color: #ff00ff; font-weight: bold; }
+/* Turn phase */
+#phase-bar { background:#111; border:1px solid #f0c040; padding:10px; margin-bottom:10px; border-radius:4px; text-align:center; }
+#phase-bar .phase-title { color:#f0c040; font-size:13px; font-weight:bold; margin-bottom:6px; }
+#phase-bar .ai-action { color:#ff6644; font-size:12px; margin-bottom:6px; }
+#phase-bar .player-action { color:#88aaff; font-size:12px; margin-bottom:6px; }
 
 /* Actions */
-#actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-#actions button { background: #222; color: #e0e0e0; border: 1px solid #555; padding: 7px 14px; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 12px; transition: all 0.15s; }
-#actions button:hover:not(:disabled) { background: #333; border-color: #aaa; }
-#actions button:disabled { opacity: 0.3; cursor: not-allowed; }
-#actions button.move { border-color: #44aa44; }
-#actions button.attack { border-color: #ff6644; }
-#actions button.skill-q { border-color: #ff8800; }
-#actions button.skill-w { border-color: #ff4444; }
-#actions button.skill-e { border-color: #44aaff; }
-#actions button.skill-r { border-color: #ff00ff; background: #1a0020; }
-#actions button.skill-r:hover:not(:disabled) { background: #2a0040; box-shadow: 0 0 10px #ff00ff44; }
+#actions { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; justify-content:center; }
+#actions button { background:#222; color:#e0e0e0; border:1px solid #555; padding:7px 14px; cursor:pointer; border-radius:4px; font-family:inherit; font-size:12px; transition:all 0.15s; }
+#actions button:hover:not(:disabled) { background:#333; border-color:#aaa; }
+#actions button:disabled { opacity:0.3; cursor:not-allowed; }
+#actions button.move { border-color:#44aa44; }
+#actions button.attack { border-color:#ff6644; }
+#actions button.skill-q { border-color:#ff8800; }
+#actions button.skill-w { border-color:#ff4444; }
+#actions button.skill-e { border-color:#44aaff; }
+#actions button.skill-r { border-color:#ff00ff; background:#1a0020; }
+#actions button.confirm { border-color:#f0c040; background:#2a2a00; color:#f0c040; font-weight:bold; }
+#actions button.confirm:hover { background:#444400; }
+#actions button.cancel { border-color:#ff4444; }
 
-/* Target select */
-#target-select { background: #1a1a0a; border: 1px solid #f0c040; padding: 8px; margin-bottom: 10px; border-radius: 4px; display: none; }
-#target-select h4 { color: #f0c040; margin-bottom: 6px; font-size: 12px; }
-#target-select button { background: #222; color: #e0e0e0; border: 1px solid #555; padding: 5px 10px; margin: 2px; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 11px; }
-#target-select button:hover { background: #333; }
+/* Log */
+#log { background:#0a0a0a; border:1px solid #333; padding:8px; height:180px; overflow-y:auto; margin-bottom:10px; border-radius:4px; font-size:11px; line-height:1.5; }
+.log-turn { color:#f0c040; font-weight:bold; }
+.log-dmg { color:#ff6644; }
+.log-heal { color:#44ff44; }
+.log-info { color:#88aaff; }
+.log-kill { color:#ff44ff; }
+.log-ult { color:#ff00ff; font-weight:bold; }
+.log-reveal { color:#ffcc00; font-weight:bold; }
+.log-miss { color:#666; }
 
 /* Effects */
-#ult-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 100; opacity: 0; transition: opacity 0.15s; }
-#ult-overlay.flash { opacity: 1; }
+#ult-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:100; opacity:0; transition:opacity 0.15s; }
+#ult-overlay.flash { opacity:1; }
 @keyframes shake { 0%,100%{transform:translate(0,0)}10%{transform:translate(-6px,3px)}30%{transform:translate(4px,-4px)}50%{transform:translate(-3px,5px)}70%{transform:translate(5px,-2px)}90%{transform:translate(-4px,2px)} }
-.screen-shake { animation: shake 0.4s ease; }
+.screen-shake { animation:shake 0.4s ease; }
 @keyframes pulse { from{opacity:0.6}to{opacity:1} }
+@keyframes revealPulse { 0%{box-shadow:0 0 20px #ffcc00}100%{box-shadow:none} }
 
 /* Game over */
 #game-over-overlay { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:200; justify-content:center; align-items:center; flex-direction:column; }
 #game-over-overlay.show { display:flex; }
-#game-over-overlay.victory { background: radial-gradient(ellipse at center, rgba(255,200,0,0.3) 0%, rgba(0,0,0,0.9) 70%); }
-#game-over-overlay.defeat { background: radial-gradient(ellipse at center, rgba(255,0,0,0.2) 0%, rgba(0,0,0,0.95) 70%); }
-#game-over-text { font-size: 56px; font-weight: bold; letter-spacing: 8px; margin-bottom: 16px; animation: resultAppear 0.8s ease-out; }
-#game-over-overlay.victory #game-over-text { color: #f0c040; text-shadow: 0 0 30px #f0c040, 0 0 60px #ff8800; }
-#game-over-overlay.defeat #game-over-text { color: #ff2222; text-shadow: 0 0 30px #ff0000, 0 0 60px #880000; }
-#game-over-sub { font-size: 14px; color: #aaa; margin-bottom: 24px; animation: resultAppear 1s ease-out; }
-#game-over-overlay button { background:none; border:2px solid #888; color:#e0e0e0; padding:10px 36px; font-size:16px; cursor:pointer; border-radius:4px; font-family:inherit; animation: resultAppear 1.2s ease-out; }
+#game-over-overlay.victory { background:radial-gradient(ellipse at center,rgba(255,200,0,0.3) 0%,rgba(0,0,0,0.9) 70%); }
+#game-over-overlay.defeat { background:radial-gradient(ellipse at center,rgba(255,0,0,0.2) 0%,rgba(0,0,0,0.95) 70%); }
+#game-over-text { font-size:56px; font-weight:bold; letter-spacing:8px; margin-bottom:16px; animation:resultAppear 0.8s ease-out; }
+#game-over-overlay.victory #game-over-text { color:#f0c040; text-shadow:0 0 30px #f0c040,0 0 60px #ff8800; }
+#game-over-overlay.defeat #game-over-text { color:#ff2222; text-shadow:0 0 30px #ff0000,0 0 60px #880000; }
+#game-over-sub { font-size:14px; color:#aaa; margin-bottom:24px; animation:resultAppear 1s ease-out; }
+#game-over-overlay button { background:none; border:2px solid #888; color:#e0e0e0; padding:10px 36px; font-size:16px; cursor:pointer; border-radius:4px; font-family:inherit; animation:resultAppear 1.2s ease-out; }
 #game-over-overlay button:hover { border-color:#f0c040; color:#f0c040; }
 @keyframes resultAppear { 0%{opacity:0;transform:scale(0.5) translateY(20px)}100%{opacity:1;transform:scale(1) translateY(0)} }
-
-.particle { position:fixed; pointer-events:none; z-index:90; border-radius:50%; animation: particleFly 1s ease-out forwards; }
+.particle { position:fixed; pointer-events:none; z-index:90; border-radius:50%; animation:particleFly 1s ease-out forwards; }
 @keyframes particleFly { 0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(0) translateY(-100px)} }
 </style>
 </head>
 <body>
 <div id="game">
   <h1>⚔️ ib-lol ⚔️</h1>
-  <div class="subtitle">턴제 1v1 라인전 — Annie Mirror Match</div>
+  <div class="subtitle">턴제 1v1 — 안개 속의 라인전</div>
   <div id="map"></div>
   <div class="stats-row">
     <div class="stat-panel player" id="player-stats"></div>
     <div class="stat-panel enemy" id="enemy-stats"></div>
   </div>
-  <div id="target-select"><h4>🎯 타겟 선택</h4><div id="target-buttons"></div></div>
+  <div id="phase-bar"></div>
   <div id="actions"></div>
   <div id="log"></div>
 </div>
@@ -126,511 +130,455 @@ h1 { text-align: center; color: #f0c040; margin-bottom: 2px; font-size: 22px; }
 
 <script>
 // ============ CONFIG ============
-const COLS = 15, ROWS = 7;
-const MID_ROW = 3; // lane row (0-indexed)
+const COLS=15, ROWS=7;
+const REVEAL_INTERVAL=5;
+const MINION_RESPAWN_INTERVAL=5;
 
-// Map layout: 0=wall, 1=lane, 2=grass
-const MAP_TEMPLATE = [
-  [0,0,0,2,2,2,2,0,2,2,2,2,0,0,0],
-  [0,0,2,2,1,1,1,1,1,1,1,2,2,0,0],
-  [0,2,2,1,1,1,1,1,1,1,1,1,2,2,0],
-  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-  [0,2,2,1,1,1,1,1,1,1,1,1,2,2,0],
-  [0,0,2,2,1,1,1,1,1,1,1,2,2,0,0],
-  [0,0,0,2,2,2,2,0,2,2,2,2,0,0,0],
+// Map: 0=wall, 1=walkable
+const MAP=[];
+for(let y=0;y<ROWS;y++){MAP[y]=[];for(let x=0;x<COLS;x++){MAP[y][x]=(x===0||x===COLS-1||y===0||y===ROWS-1)?0:1;}}
+
+// Fixed minion positions (symmetrical)
+const MINION_POSITIONS=[
+  {x:3,y:1},{x:5,y:2},{x:3,y:3},{x:5,y:4},{x:3,y:5},
+  {x:7,y:1},{x:7,y:3},{x:7,y:5},
+  {x:11,y:1},{x:9,y:2},{x:11,y:3},{x:9,y:4},{x:11,y:5},
 ];
 
-const TOWER_HP = 1500, TOWER_DMG = 80, TOWER_RANGE = 2;
-const MINION_HP = 300, MINION_DMG = 15, MINION_GOLD = 20, MINION_SPAWN_INTERVAL = 3;
-
-const ANNIE = {
-  name:'Annie', hp:560, mp:418, ad:50, ap:0, armor:19, mr:30,
-  // Per-level growth
-  hpPerLvl: 88, mpPerLvl: 25, adPerLvl: 2.7, apPerLvl: 0, armorPerLvl: 4, mrPerLvl: 1.3,
-  skills: {
-    passive: { name:'파이로매니아', stacksNeeded:4 },
-    q: { name:'붕괴', key:'Q', baseDmg:[80,115,150,185,220], manaCost:60, cooldown:0, range:3, type:'target' },
-    w: { name:'소각', key:'W', baseDmg:[70,115,160,205,250], manaCost:70, cooldown:1, range:2, type:'target' },
-    e: { name:'보호막', key:'E', baseShield:[40,65,90,115,140], shieldApRatio:0.4, manaCost:40, cooldown:3, type:'self' },
-    r: { name:'티버', key:'R', baseDmg:[150,275,400], manaCost:100, cooldown:8, range:3, type:'target', summon:true }
+const ANNIE={
+  name:'Annie',hp:560,mp:418,ad:50,ap:0,armor:19,mr:30,
+  hpPerLvl:88,mpPerLvl:25,adPerLvl:2.7,armorPerLvl:4,mrPerLvl:1.3,
+  skills:{
+    passive:{name:'파이로매니아',stacksNeeded:4},
+    q:{name:'붕괴',key:'Q',baseDmg:[80,115,150,185,220],manaCost:60,cooldown:0,range:3,type:'target'},
+    w:{name:'소각',key:'W',baseDmg:[70,115,160,205,250],manaCost:70,cooldown:1,range:2,type:'aoe',aoeRadius:1},
+    e:{name:'보호막',key:'E',baseShield:[40,65,90,115,140],shieldApRatio:0.4,manaCost:40,cooldown:3,type:'self'},
+    r:{name:'티버',key:'R',baseDmg:[150,275,400],manaCost:100,cooldown:8,range:3,type:'aoe',aoeRadius:1,summon:true}
   }
 };
 
-// Level/XP config
-const MAX_LEVEL = 18;
-const XP_PER_LEVEL = [0,280,380,480,580,680,780,880,980,1080,1180,1280,1380,1480,1580,1680,1780,1880];
-const MINION_XP = 60;
-const CHAMPION_KILL_XP = 200;
-const SKILL_MAX = {q:5, w:5, e:5, r:3};
-const R_UNLOCK_LEVELS = [6, 11, 16]; // levels at which R can be leveled
-
-function getSkillDamage(key, skillLvl) {
-  const s = ANNIE.skills[key];
-  if (!s.baseDmg || skillLvl <= 0) return 0;
-  return s.baseDmg[Math.min(skillLvl - 1, s.baseDmg.length - 1)] || 0;
-}
-function getSkillShield(skillLvl) {
-  const s = ANNIE.skills.e;
-  if (skillLvl <= 0) return 0;
-  return s.baseShield[Math.min(skillLvl - 1, s.baseShield.length - 1)] || 0;
-}
-function canLevelSkill(champ, key) {
-  if (champ.skillPoints <= 0) return false;
-  if (champ.skillLevels[key] >= SKILL_MAX[key]) return false;
-  if (key === 'r') {
-    // R can only be leveled at 6, 11, 16
-    const rLvl = champ.skillLevels.r;
-    if (rLvl >= 3) return false;
-    if (champ.level < R_UNLOCK_LEVELS[rLvl]) return false;
-    return true;
-  }
-  // Normal skills can't exceed ceil(level/2) ... simplified: just max check
-  return true;
-}
-function levelUpSkill(champ, key) {
-  if (!canLevelSkill(champ, key)) return;
-  champ.skillLevels[key]++;
-  champ.skillPoints--;
-  const cl = champ.team==='blue'?'🔵':'🔴';
-  log(`⬆️ ${cl} ${ANNIE.skills[key].key} 스킬 레벨 업! → Lv.${champ.skillLevels[key]}`, 'log-heal');
-  render();
-}
-// AI auto skill order
-const AI_SKILL_ORDER = ['q','w','q','e','q','r','w','w','q','w','e','r','q','w','e','r','e','e'];
-function aiAutoLevelSkills(champ) {
-  while (champ.skillPoints > 0) {
-    const totalUsed = champ.skillLevels.q + champ.skillLevels.w + champ.skillLevels.e + champ.skillLevels.r;
-    const nextSkill = AI_SKILL_ORDER[totalUsed];
-    if (nextSkill && canLevelSkill(champ, nextSkill)) {
-      champ.skillLevels[nextSkill]++;
-      champ.skillPoints--;
-    } else break;
-  }
-}
+const MAX_LEVEL=18;
+const XP_PER_LEVEL=[0,280,380,480,580,680,780,880,980,1080,1180,1280,1380,1480,1580,1680,1780,1880];
+const MINION_XP=60, MINION_GOLD=20, CHAMPION_KILL_XP=200;
+const SKILL_MAX={q:5,w:5,e:5,r:3};
+const R_UNLOCK=[6,11,16];
+const AI_SKILL_ORDER=['q','w','q','e','q','r','w','w','q','w','e','r','q','w','e','r','e','e'];
 
 // ============ UTIL ============
-function dist(a, b) { return Math.abs(a.x-b.x)+Math.abs(a.y-b.y); } // Manhattan
-function isWalkable(x, y) { return x>=0 && x<COLS && y>=0 && y<ROWS && MAP_TEMPLATE[y][x] !== 0; }
-function isOccupied(x, y, excludeUnit) {
-  if (!state) return false;
-  const units = getAllUnits();
-  return units.some(u => u !== excludeUnit && u.alive && u.x === x && u.y === y);
-}
-function canMoveTo(x, y, mover) {
-  return isWalkable(x, y) && !isOccupied(x, y, mover);
-}
-function getAllUnits() {
-  const u = [];
-  if (state.player.alive) u.push(state.player);
-  if (state.enemy.alive) u.push(state.enemy);
-  state.towers.forEach(t => { if (t.alive) u.push(t); });
-  state.minions.forEach(m => { if (m.alive) u.push(m); });
-  state.tibbersList.forEach(t => { if (t.alive) u.push(t); });
-  return u;
-}
+function dist(a,b){return Math.abs(a.x-b.x)+Math.abs(a.y-b.y);}
+function isWalkable(x,y){return x>=0&&x<COLS&&y>=0&&y<ROWS&&MAP[y][x]===1;}
+
+// ============ SKILL HELPERS ============
+function getSkillDmg(key,lvl){const s=ANNIE.skills[key];if(!s.baseDmg||lvl<=0)return 0;return s.baseDmg[Math.min(lvl-1,s.baseDmg.length-1)]||0;}
+function getShield(lvl){const s=ANNIE.skills.e;if(lvl<=0)return 0;return s.baseShield[Math.min(lvl-1,s.baseShield.length-1)]||0;}
+function canLvlSkill(c,k){if(c.skillPoints<=0||c.skillLevels[k]>=SKILL_MAX[k])return false;if(k==='r'){const rl=c.skillLevels.r;return rl<3&&c.level>=R_UNLOCK[rl];}return true;}
+function lvlSkill(c,k){if(!canLvlSkill(c,k))return;c.skillLevels[k]++;c.skillPoints--;log(`⬆️ ${c.team==='blue'?'🔵':'🔴'} ${ANNIE.skills[k].key} 스킬 Lv.${c.skillLevels[k]}`,'log-heal');render();}
+function aiAutoLvl(c){while(c.skillPoints>0){const t=c.skillLevels.q+c.skillLevels.w+c.skillLevels.e+c.skillLevels.r;const n=AI_SKILL_ORDER[t];if(n&&canLvlSkill(c,n)){c.skillLevels[n]++;c.skillPoints--;}else break;}}
 
 // ============ STATE ============
 let state;
 
-function createChamp(t, team, x, y) {
-  const c = { type:'champion', team, name:t.name, x, y, baseHp:t.hp, baseMp:t.mp, baseAd:t.ad, baseAp:t.ap, baseArmor:t.armor, baseMr:t.mr,
-    maxHp:t.hp, hp:t.hp, maxMp:t.mp, mp:t.mp, ad:t.ad, ap:t.ap, armor:t.armor, mr:t.mr,
-    level:1, xp:0, skillPoints:1, skillLevels:{q:0,w:0,e:0,r:0},
-    passiveStacks:0, shield:0, cooldowns:{q:0,w:0,e:0,r:0}, tibbers:null, gold:0, alive:true, stunned:false };
-  recalcStats(c);
-  return c;
+function createChamp(team,x,y){
+  const c={type:'champion',team,name:ANNIE.name,x,y,
+    baseHp:ANNIE.hp,baseMp:ANNIE.mp,baseAd:ANNIE.ad,
+    maxHp:ANNIE.hp,hp:ANNIE.hp,maxMp:ANNIE.mp,mp:ANNIE.mp,
+    ad:ANNIE.ad,ap:ANNIE.ap,armor:ANNIE.armor,mr:ANNIE.mr,
+    level:1,xp:0,skillPoints:1,skillLevels:{q:0,w:0,e:0,r:0},
+    passiveStacks:0,shield:0,cooldowns:{q:0,w:0,e:0,r:0},
+    tibbers:null,gold:0,alive:true,stunned:false};
+  recalc(c);return c;
 }
-function recalcStats(c) {
-  const lvl = c.level;
-  c.maxHp = Math.floor(c.baseHp + ANNIE.hpPerLvl * (lvl - 1));
-  c.maxMp = Math.floor(c.baseMp + ANNIE.mpPerLvl * (lvl - 1));
-  c.ad = Math.floor(c.baseAd + ANNIE.adPerLvl * (lvl - 1));
-  c.armor = Math.floor(c.baseArmor + ANNIE.armorPerLvl * (lvl - 1));
-  c.mr = Math.floor(c.baseMr + ANNIE.mrPerLvl * (lvl - 1));
+function recalc(c){
+  const l=c.level;
+  c.maxHp=Math.floor(c.baseHp+ANNIE.hpPerLvl*(l-1));
+  c.maxMp=Math.floor(c.baseMp+ANNIE.mpPerLvl*(l-1));
+  c.ad=Math.floor(c.baseAd+ANNIE.adPerLvl*(l-1));
+  c.armor=Math.floor(ANNIE.armor+ANNIE.armorPerLvl*(l-1));
+  c.mr=Math.floor(ANNIE.mr+ANNIE.mrPerLvl*(l-1));
 }
-function grantXP(champ, amount) {
-  if (champ.level >= MAX_LEVEL) return;
-  champ.xp += amount;
-  while (champ.level < MAX_LEVEL && champ.xp >= XP_PER_LEVEL[champ.level]) {
-    champ.xp -= XP_PER_LEVEL[champ.level];
-    champ.level++;
-    champ.skillPoints++;
-    const oldMaxHp = champ.maxHp, oldMaxMp = champ.maxMp;
-    recalcStats(champ);
-    champ.hp += champ.maxHp - oldMaxHp;
-    champ.mp += champ.maxMp - oldMaxMp;
-    const cl = champ.team==='blue'?'🔵':'🔴';
-    log(`⬆️ ${cl} ${champ.name} 레벨 업! Lv.${champ.level} (스킬 포인트 +1)`,'log-heal');
-    // AI auto-levels skills immediately
-    if (champ.team === 'red') aiAutoLevelSkills(champ);
+function grantXP(c,amt){
+  if(c.level>=MAX_LEVEL)return;
+  c.xp+=amt;
+  while(c.level<MAX_LEVEL&&c.xp>=XP_PER_LEVEL[c.level]){
+    c.xp-=XP_PER_LEVEL[c.level];c.level++;c.skillPoints++;
+    const oh=c.maxHp,om=c.maxMp;recalc(c);
+    c.hp+=c.maxHp-oh;c.mp+=c.maxMp-om;
+    const cl=c.team==='blue'?'🔵':'🔴';
+    log(`⬆️ ${cl} 레벨 업! Lv.${c.level}`,'log-heal');
+    if(c.team==='red')aiAutoLvl(c);
   }
 }
-function createTower(team, x, y) { return { type:'tower', team, x, y, hp:TOWER_HP, maxHp:TOWER_HP, alive:true, ad:TOWER_DMG, range:TOWER_RANGE, armor:0, mr:0 }; }
-function createMinion(team, x, y, id) { return { type:'minion', team, x, y, hp:MINION_HP, maxHp:MINION_HP, ad:MINION_DMG, alive:true, id, armor:0, mr:0 }; }
+function calcDmg(raw,type,tgt){const d=type==='magic'?(tgt.mr||0):(tgt.armor||0);return Math.max(1,Math.floor(raw*(100/(100+d))));}
+function applyDmg(tgt,amt){
+  if(tgt.shield>0){if(tgt.shield>=amt){tgt.shield-=amt;return 0;}amt-=tgt.shield;tgt.shield=0;}
+  tgt.hp=Math.max(0,tgt.hp-amt);if(tgt.hp<=0)tgt.alive=false;return amt;
+}
 
-function initGame() {
-  state = {
-    turn: 1,
-    player: createChamp(ANNIE, 'blue', 3, MID_ROW),
-    enemy: createChamp(ANNIE, 'red', 11, MID_ROW),
-    towers: [createTower('blue', 1, MID_ROW), createTower('red', 13, MID_ROW)],
-    minions: [], tibbersList: [], minionIdCounter: 0,
-    logs: [], phase: 'action', gameOver: false,
-    moveMode: false
+function initGame(){
+  state={
+    turn:1,
+    player:createChamp('blue',2,3),
+    enemy:createChamp('red',12,3),
+    minions:MINION_POSITIONS.map((p,i)=>({type:'minion',x:p.x,y:p.y,alive:true,id:i})),
+    tibbersList:[],
+    logs:[],
+    // Phase: 'plan' = choosing action, 'target' = choosing target cell
+    phase:'plan',
+    playerAction:null, // {type:'move'|'attack'|'skill',dir?,target?,key?}
+    aiAction:null,
+    targetMode:null, // null or {type,key,range}
+    lastRevealTurn:0,
+    lastEnemyReveal:null, // {x,y,hp,maxHp,mp,maxMp,level} shown during reveal
+    gameOver:false
   };
-  aiAutoLevelSkills(state.enemy); // AI uses starting skill point
+  aiAutoLvl(state.enemy);
   spawnMinions();
-  log(`━━━ 턴 ${state.turn} ━━━`, 'log-turn');
+  planPhase();
+  log(`━━━ 턴 ${state.turn} ━━━`,'log-turn');
+  log('📍 적 위치는 5턴마다 공개됩니다','log-info');
   render();
 }
-function restartGame() {
+function restartGame(){
   document.getElementById('game-over-overlay').classList.remove('show','victory','defeat');
   initGame();
 }
+function log(msg,cls=''){state.logs.push({msg,cls});}
 
-function log(msg, cls='') { state.logs.push({msg, cls}); }
-
-function calcDmg(raw, type, target) {
-  const def = type==='magic' ? (target.mr||0) : (target.armor||0);
-  return Math.max(1, Math.floor(raw * (100/(100+def))));
-}
-function applyDmg(target, amount) {
-  if (target.shield > 0) { if (target.shield >= amount) { target.shield -= amount; return 0; } amount -= target.shield; target.shield = 0; }
-  target.hp = Math.max(0, target.hp - amount);
-  if (target.hp <= 0) target.alive = false;
-  return amount;
+// ============ MINIONS ============
+function spawnMinions(){
+  state.minions.forEach((m,i)=>{
+    if(!m.alive){m.alive=true;m.x=MINION_POSITIONS[i].x;m.y=MINION_POSITIONS[i].y;}
+  });
 }
 
-function findEmptyNear(x, y) {
-  if (!isOccupied(x, y, null) && isWalkable(x, y)) return {x, y};
-  const dirs=[[0,1],[0,-1],[1,0],[-1,0],[0,2],[0,-2],[1,1],[1,-1],[-1,1],[-1,-1]];
-  for (const [dx,dy] of dirs) {
-    const nx=x+dx, ny=y+dy;
-    if (isWalkable(nx,ny) && !isOccupied(nx,ny,null)) return {x:nx, y:ny};
-  }
-  return null;
+// ============ TURN PHASES ============
+function planPhase(){
+  state.phase='plan';
+  state.playerAction=null;
+  state.targetMode=null;
+  // AI decides action
+  state.aiAction=aiDecideAction();
+  render();
 }
-function spawnMinions() {
-  if (state.turn % MINION_SPAWN_INTERVAL === 1 || state.turn === 1) {
-    const blueSpot = findEmptyNear(2, MID_ROW);
-    if (blueSpot) {
-      state.minionIdCounter++;
-      state.minions.push(createMinion('blue', blueSpot.x, blueSpot.y, 'B'+state.minionIdCounter));
+
+function aiDecideAction(){
+  const ai=state.enemy,p=state.player;
+  if(!ai.alive)return{type:'wait',desc:'대기'};
+  if(ai.stunned)return{type:'wait',desc:'⚡ 스턴 상태'};
+
+  // Try to find and kill nearby minion for gold/xp
+  const nearMinion=state.minions.find(m=>m.alive&&dist({x:ai.x,y:ai.y},{x:m.x,y:m.y})<=1);
+  if(nearMinion)return{type:'attack',target:{x:nearMinion.x,y:nearMinion.y},desc:`⚔️ 평타 → (${nearMinion.x},${nearMinion.y})`};
+
+  // Try skills on player if know position (within last 2 turns of reveal)
+  const knowsPlayer=state.lastRevealTurn>0&&(state.turn-state.lastRevealTurn)<=2;
+
+  if(knowsPlayer||dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){
+    if(ai.skillLevels.r>0&&ai.cooldowns.r===0&&ai.mp>=100&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){
+      return{type:'skill',key:'r',target:{x:p.x,y:p.y},desc:`🔥 R 티버 → (${p.x},${p.y})`};
     }
-    const redSpot = findEmptyNear(12, MID_ROW);
-    if (redSpot) {
-      state.minionIdCounter++;
-      state.minions.push(createMinion('red', redSpot.x, redSpot.y, 'R'+state.minionIdCounter));
+    if(ai.skillLevels.q>0&&ai.cooldowns.q===0&&ai.mp>=60&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){
+      return{type:'skill',key:'q',target:{x:p.x,y:p.y},desc:`Q 붕괴 → (${p.x},${p.y})`};
     }
-    log('🏰 미니언 생성!', 'log-info');
-  }
-}
-
-// ============ EFFECTS ============
-function screenShake() { document.getElementById('game').classList.add('screen-shake'); setTimeout(()=>document.getElementById('game').classList.remove('screen-shake'),400); }
-function ultFlash(color) { const o=document.getElementById('ult-overlay'); o.style.background=color; o.classList.add('flash'); screenShake(); setTimeout(()=>o.classList.remove('flash'),200); }
-function spawnParticles(n, color) {
-  for(let i=0;i<n;i++){const p=document.createElement('div');p.className='particle';const s=4+Math.random()*8;p.style.width=s+'px';p.style.height=s+'px';p.style.background=color;p.style.boxShadow=`0 0 ${s}px ${color}`;p.style.left=(20+Math.random()*60)+'vw';p.style.top=(20+Math.random()*60)+'vh';document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}
-}
-function showGameOver(victory) {
-  const ov=document.getElementById('game-over-overlay'), txt=document.getElementById('game-over-text'), sub=document.getElementById('game-over-sub');
-  if(victory){ov.classList.add('show','victory');txt.textContent='VICTORY';sub.textContent=!state.enemy.alive?'적 챔피언을 처치했습니다!':'적 타워를 파괴했습니다!';spawnParticles(40,'#f0c040');setTimeout(()=>spawnParticles(30,'#ff8800'),300);}
-  else{ov.classList.add('show','defeat');txt.textContent='DEFEAT';sub.textContent=!state.player.alive?'챔피언이 쓰러졌습니다...':'아군 타워가 파괴되었습니다...';screenShake();setTimeout(()=>screenShake(),300);}
-}
-
-// ============ SKILLS ============
-function executeSkill(caster, key, target) {
-  const skill = ANNIE.skills[key];
-  if (caster.cooldowns[key]>0 || caster.mp<skill.manaCost) return false;
-  caster.mp -= skill.manaCost;
-  caster.cooldowns[key] = skill.cooldown;
-  caster.passiveStacks++;
-  let willStun = false;
-  if (caster.passiveStacks >= ANNIE.skills.passive.stacksNeeded) { willStun=true; caster.passiveStacks=0; }
-  const cl = caster.team==='blue'?'🔵':'🔴';
-
-  const sLvl = caster.skillLevels[key] || 0;
-  if (sLvl <= 0) return false;
-
-  if (key==='e') {
-    const base = getSkillShield(sLvl);
-    const s=Math.floor(base+skill.shieldApRatio*caster.ap);
-    caster.shield+=s;
-    log(`${cl} ${caster.name} E 보호막 +${s}`,'log-info');
-    return true;
-  }
-  if (!target?.alive) return false;
-  const d = dist({x:caster.x,y:caster.y},{x:target.x,y:target.y});
-  if (d > skill.range) return false;
-
-  const raw = getSkillDamage(key, sLvl) + caster.ap;
-  const dmg = calcDmg(raw,'magic',target);
-  applyDmg(target,dmg);
-  const tl = target.team==='blue'?'🔵':'🔴';
-
-  if (key==='r') {
-    ultFlash(caster.team==='blue'?'rgba(100,0,255,0.4)':'rgba(255,0,100,0.4)');
-    spawnParticles(25, caster.team==='blue'?'#8844ff':'#ff4488');
-    log(`🔥🧸 ${cl} 소환: 티버!! → ${tl}${target.name||target.type} ${dmg}`,'log-ult');
-    if (!caster.tibbers) {
-      // Find empty cell near target for tibbers
-      let tx=target.x, ty=target.y;
-      if(isOccupied(tx,ty,null)){
-        const dirs=[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
-        for(const[ddx,ddy] of dirs){if(canMoveTo(tx+ddx,ty+ddy,null)){tx+=ddx;ty+=ddy;break;}}
-      }
-      const tib={type:'tibbers',team:caster.team,x:tx,y:ty,hp:300,maxHp:300,ad:40,alive:true,armor:0,mr:0};
-      caster.tibbers=tib; state.tibbersList.push(tib);
+    if(ai.skillLevels.w>0&&ai.cooldowns.w===0&&ai.mp>=70&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=2){
+      return{type:'skill',key:'w',target:{x:p.x,y:p.y},desc:`W 소각 → (${p.x},${p.y})`};
     }
-  } else {
-    log(`${cl} ${caster.name} ${skill.key} → ${tl}${target.name||target.type} ${dmg}`,'log-dmg');
   }
 
-  if (willStun && target.type==='champion') { target.stunned=true; log(`⚡ 파이로매니아! ${tl}${target.name} 스턴!`,'log-kill'); }
-  if (key==='q' && !target.alive) { caster.mp=Math.min(caster.maxMp,caster.mp+skill.manaCost); log('💰 Q 처치 마나 회복!','log-heal'); }
-  if (!target.alive) handleKill(caster,target);
-  return true;
-}
-
-function handleKill(killer, victim) {
-  const kl=killer.team==='blue'?'🔵':'🔴';
-  if(victim.type==='minion'){
-    killer.gold+=MINION_GOLD;
-    if(killer.type==='champion') grantXP(killer, MINION_XP);
-    log(`${kl} 미니언 처치 +${MINION_GOLD}G +${MINION_XP}XP`,'log-kill');
-  } else if(victim.type==='champion'){
-    killer.gold+=300;
-    if(killer.type==='champion') grantXP(killer, CHAMPION_KILL_XP);
-    log(`${kl} 챔피언 처치! +300G +${CHAMPION_KILL_XP}XP`,'log-kill');
+  if(ai.skillLevels.e>0&&ai.cooldowns.e===0&&ai.shield===0&&ai.mp>=40){
+    return{type:'skill',key:'e',desc:'E 보호막'};
   }
-}
 
-function autoAttack(atk, tgt) {
-  if(!tgt?.alive) return false;
-  const d=dist({x:atk.x,y:atk.y},{x:tgt.x,y:tgt.y});
-  if(d>2) return false;
-  const dmg=calcDmg(atk.ad,'physical',tgt);
-  applyDmg(tgt,dmg);
-  const al=atk.team==='blue'?'🔵':'🔴', tl=tgt.team==='blue'?'🔵':'🔴';
-  log(`${al} ${atk.name||atk.type} → ${tl}${tgt.name||tgt.type} ${dmg}`,'log-dmg');
-  if(!tgt.alive) handleKill(atk,tgt);
-  return true;
-}
+  // Move toward nearest minion or wander
+  const aliveMinions=state.minions.filter(m=>m.alive);
+  let bestMinion=null,bestDist=999;
+  for(const m of aliveMinions){const d=dist({x:ai.x,y:ai.y},{x:m.x,y:m.y});if(d<bestDist){bestDist=d;bestMinion=m;}}
 
-function getEnemyTargets(unit) {
-  const et=unit.team==='blue'?'red':'blue'; let t=[];
-  const ec=unit.team==='blue'?state.enemy:state.player;
-  if(ec.alive)t.push(ec);
-  state.minions.filter(m=>m.alive&&m.team===et).forEach(m=>t.push(m));
-  state.towers.filter(tw=>tw.alive&&tw.team===et).forEach(tw=>t.push(tw));
-  state.tibbersList.filter(tb=>tb.alive&&tb.team===et).forEach(tb=>t.push(tb));
-  return t;
-}
-function getInRange(unit, range) { return getEnemyTargets(unit).filter(t=>dist({x:unit.x,y:unit.y},{x:t.x,y:t.y})<=range); }
-function tgtLabel(t) {
-  if(t.type==='champion')return`${t.name} (${t.hp}HP)`;
-  if(t.type==='minion')return`미니언 (${t.hp}HP)`;
-  if(t.type==='tower')return`타워 (${t.hp}HP)`;
-  if(t.type==='tibbers')return`티버 (${t.hp}HP)`;
-  return t.type;
+  if(bestMinion){
+    const dx=Math.sign(bestMinion.x-ai.x),dy=Math.sign(bestMinion.y-ai.y);
+    if(dx!==0&&isWalkable(ai.x+dx,ai.y))return{type:'move',dir:{x:dx,y:0},desc:`🚶 이동 → (${ai.x+dx},${ai.y})`};
+    if(dy!==0&&isWalkable(ai.x,ai.y+dy))return{type:'move',dir:{x:0,y:dy},desc:`🚶 이동 → (${ai.x},${ai.y+dy})`};
+  }
+
+  return{type:'wait',desc:'대기'};
 }
 
 // ============ PLAYER ACTIONS ============
-function playerMove(dx, dy) {
-  const nx=state.player.x+dx, ny=state.player.y+dy;
-  if(!canMoveTo(nx,ny,state.player)) return;
-  state.player.x=nx; state.player.y=ny;
-  state.moveMode=false;
-  log(`🔵 이동 → (${nx},${ny})`,'log-info');
-  endPlayerTurn();
-}
-
-function enterMoveMode() {
-  state.moveMode = true;
+function setPlayerMove(){
+  state.phase='target';
+  state.targetMode={type:'move'};
   render();
 }
-function cancelMoveMode() {
-  state.moveMode = false;
+function setPlayerAttack(){
+  state.phase='target';
+  state.targetMode={type:'attack',range:2};
+  render();
+}
+function setPlayerSkill(key){
+  const p=state.player,s=ANNIE.skills[key];
+  if(p.skillLevels[key]<=0||p.cooldowns[key]>0||p.mp<s.manaCost)return;
+  if(s.type==='self'){
+    state.playerAction={type:'skill',key,desc:`E 보호막`};
+    state.phase='plan';
+    render();return;
+  }
+  state.phase='target';
+  state.targetMode={type:'skill',key,range:s.range};
+  render();
+}
+function selectCell(x,y){
+  if(!state.targetMode)return;
+  const tm=state.targetMode;
+  const p=state.player;
+
+  if(tm.type==='move'){
+    const dx=x-p.x,dy=y-p.y;
+    if(Math.abs(dx)+Math.abs(dy)!==1)return;
+    if(!isWalkable(x,y))return;
+    state.playerAction={type:'move',dir:{x:dx,y:dy},dest:{x,y},desc:`🚶 이동 → (${x},${y})`};
+  } else if(tm.type==='attack'){
+    if(dist({x:p.x,y:p.y},{x,y})>tm.range)return;
+    state.playerAction={type:'attack',target:{x,y},desc:`⚔️ 평타 → (${x},${y})`};
+  } else if(tm.type==='skill'){
+    const s=ANNIE.skills[tm.key];
+    if(dist({x:p.x,y:p.y},{x,y})>s.range)return;
+    state.playerAction={type:'skill',key:tm.key,target:{x,y},desc:`${s.key} ${s.name} → (${x},${y})`};
+  }
+  state.phase='plan';
+  state.targetMode=null;
+  render();
+}
+function cancelTarget(){
+  state.phase='plan';
+  state.targetMode=null;
   render();
 }
 
-function playerAA() {
-  const ts=getInRange(state.player,2);
-  if(!ts.length){log('⚠️ 사거리 내 대상 없음','log-info');render();return;}
-  if(ts.length===1){autoAttack(state.player,ts[0]);endPlayerTurn();}
-  else showTargetSelect(ts,t=>{autoAttack(state.player,t);endPlayerTurn();});
+function confirmActions(){
+  if(!state.playerAction){log('⚠️ 행동을 선택하세요','log-info');render();return;}
+  executeTurn();
 }
 
-function playerSkill(key) {
-  const p=state.player, s=ANNIE.skills[key];
-  if(p.skillLevels[key]<=0)return;
-  if(p.cooldowns[key]>0)return;
-  if(p.mp<s.manaCost){log('⚠️ 마나 부족!','log-info');render();return;}
-  if(s.type==='self'){executeSkill(p,key,null);endPlayerTurn();}
-  else{
-    const ts=getInRange(p,s.range);
-    if(!ts.length){log('⚠️ 사거리 내 대상 없음','log-info');render();return;}
-    if(ts.length===1){executeSkill(p,key,ts[0]);endPlayerTurn();}
-    else showTargetSelect(ts,t=>{executeSkill(p,key,t);endPlayerTurn();});
+// ============ EXECUTE TURN ============
+function executeTurn(){
+  const p=state.player,e=state.enemy;
+  const pa=state.playerAction,aa=state.aiAction;
+
+  log(`🔵 ${pa.desc}`,'log-info');
+  log(`🔴 ${aa.desc}`,'log-info');
+
+  // Execute both simultaneously
+  executeAction(p,pa);
+  executeAction(e,aa);
+
+  if(checkGameOver()){render();return;}
+
+  // Cooldown tick
+  for(let k of['q','w','e','r']){if(p.cooldowns[k]>0)p.cooldowns[k]--;if(e.cooldowns[k]>0)e.cooldowns[k]--;}
+  p.stunned=false;e.stunned=false;
+  p.mp=Math.min(p.maxMp,p.mp+10);
+  e.mp=Math.min(e.maxMp,e.mp+10);
+
+  // Minion respawn
+  if(state.turn%MINION_RESPAWN_INTERVAL===0){
+    spawnMinions();
+    log('🔄 미니언 리젠!','log-info');
+  }
+
+  // Reveal check
+  if(state.turn%REVEAL_INTERVAL===0){
+    state.lastRevealTurn=state.turn;
+    state.lastEnemyReveal={x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,mp:e.mp,maxMp:e.maxMp,level:e.level};
+    log(`👁️ 적 위치 공개! (${e.x},${e.y}) HP:${e.hp}/${e.maxHp} MP:${e.mp}/${e.maxMp} Lv.${e.level}`,'log-reveal');
+  }
+
+  state.turn++;
+  log(`━━━ 턴 ${state.turn} ━━━`,'log-turn');
+
+  // Tibbers AI
+  tibbersAI();
+
+  cleanDead();
+  if(checkGameOver()){render();return;}
+  planPhase();
+}
+
+function executeAction(champ,action){
+  if(!champ.alive||!action)return;
+  if(champ.stunned)return;
+
+  if(action.type==='move'){
+    const nx=champ.x+action.dir.x,ny=champ.y+action.dir.y;
+    if(isWalkable(nx,ny)){champ.x=nx;champ.y=ny;}
+  }
+  else if(action.type==='attack'){
+    const tx=action.target.x,ty=action.target.y;
+    if(dist({x:champ.x,y:champ.y},{x:tx,y:ty})>2)return;
+
+    // Check minion at target
+    const minion=state.minions.find(m=>m.alive&&m.x===tx&&m.y===ty);
+    if(minion){
+      minion.alive=false;
+      grantXP(champ,MINION_XP);champ.gold+=MINION_GOLD;
+      const cl=champ.team==='blue'?'🔵':'🔴';
+      log(`${cl} 미니언 처치 (${tx},${ty}) +${MINION_GOLD}G +${MINION_XP}XP`,'log-kill');
+    }
+
+    // Check enemy champion at target
+    const enemy=champ.team==='blue'?state.enemy:state.player;
+    if(enemy.alive&&enemy.x===tx&&enemy.y===ty){
+      const dmg=calcDmg(champ.ad,'physical',enemy);
+      applyDmg(enemy,dmg);
+      const cl=champ.team==='blue'?'🔵':'🔴',tl=enemy.team==='blue'?'🔵':'🔴';
+      log(`${cl} 평타 적중! → ${tl} ${dmg} 피해`,'log-dmg');
+      if(!enemy.alive){champ.gold+=300;grantXP(champ,CHAMPION_KILL_XP);log(`${cl} 챔피언 처치!`,'log-kill');}
+    }
+    else if(!minion){
+      const cl=champ.team==='blue'?'🔵':'🔴';
+      log(`${cl} 평타 빗나감 (${tx},${ty})`,'log-miss');
+    }
+
+    // Check tibbers at target
+    const tib=state.tibbersList.find(t=>t.alive&&t.x===tx&&t.y===ty&&t.team!==champ.team);
+    if(tib){const dmg=calcDmg(champ.ad,'physical',tib);applyDmg(tib,dmg);}
+  }
+  else if(action.type==='skill'){
+    const key=action.key;
+    execSkill(champ,key,action.target);
   }
 }
 
-function showTargetSelect(targets, cb) {
-  state.phase='target';
-  const c=document.getElementById('target-buttons');c.innerHTML='';
-  const div=document.getElementById('target-select');div.style.display='block';
-  targets.forEach(t=>{const b=document.createElement('button');b.textContent=tgtLabel(t);b.onclick=()=>{div.style.display='none';state.phase='action';cb(t);};c.appendChild(b);});
-  const cancel=document.createElement('button');cancel.textContent='취소';cancel.style.borderColor='#ff4444';
-  cancel.onclick=()=>{div.style.display='none';state.phase='action';render();};
-  c.appendChild(cancel);
-  render();
+function execSkill(caster,key,target){
+  const skill=ANNIE.skills[key];
+  if(caster.cooldowns[key]>0||caster.mp<skill.manaCost)return;
+  const sLvl=caster.skillLevels[key];if(sLvl<=0)return;
+
+  caster.mp-=skill.manaCost;
+  caster.cooldowns[key]=skill.cooldown;
+  caster.passiveStacks++;
+  let willStun=false;
+  if(caster.passiveStacks>=ANNIE.skills.passive.stacksNeeded){willStun=true;caster.passiveStacks=0;}
+  const cl=caster.team==='blue'?'🔵':'🔴';
+
+  if(key==='e'){
+    const s=Math.floor(getShield(sLvl)+skill.shieldApRatio*caster.ap);
+    caster.shield+=s;
+    log(`${cl} E 보호막 +${s}`,'log-info');
+    return;
+  }
+  if(!target)return;
+  if(dist({x:caster.x,y:caster.y},target)>skill.range)return;
+
+  const raw=getSkillDmg(key,sLvl)+caster.ap;
+  const enemy=caster.team==='blue'?state.enemy:state.player;
+  const aoeR=skill.aoeRadius||0;
+
+  // Check hit on enemy
+  let hitEnemy=false;
+  if(enemy.alive){
+    const d=dist(target,{x:enemy.x,y:enemy.y});
+    if(d<=aoeR){
+      const dmg=calcDmg(raw,'magic',enemy);
+      applyDmg(enemy,dmg);hitEnemy=true;
+      const tl=enemy.team==='blue'?'🔵':'🔴';
+      if(key==='r'){
+        screenShake();ultFlash(caster.team==='blue'?'rgba(100,0,255,0.4)':'rgba(255,0,100,0.4)');
+        spawnParticles(25,caster.team==='blue'?'#8844ff':'#ff4488');
+        log(`🔥🧸 ${cl} 소환:티버!! → ${tl} ${dmg} 적중!`,'log-ult');
+      } else {
+        log(`${cl} ${ANNIE.skills[key].key} → ${tl} ${dmg} 적중!`,'log-dmg');
+      }
+      if(willStun){enemy.stunned=true;log(`⚡ 파이로매니아! 스턴!`,'log-kill');}
+      if(!enemy.alive){caster.gold+=300;grantXP(caster,CHAMPION_KILL_XP);log(`${cl} 챔피언 처치!`,'log-kill');}
+      if(key==='q'&&!enemy.alive){caster.mp=Math.min(caster.maxMp,caster.mp+skill.manaCost);log('💰 Q 처치 마나 회복!','log-heal');}
+    }
+  }
+
+  // Check minions in AoE
+  state.minions.filter(m=>m.alive&&dist(target,{x:m.x,y:m.y})<=aoeR).forEach(m=>{
+    m.alive=false;grantXP(caster,MINION_XP);caster.gold+=MINION_GOLD;
+    log(`${cl} 미니언 처치 (${m.x},${m.y}) +${MINION_GOLD}G`,'log-kill');
+  });
+
+  // Check tibbers
+  state.tibbersList.filter(t=>t.alive&&t.team!==caster.team&&dist(target,{x:t.x,y:t.y})<=aoeR).forEach(t=>{
+    const dmg=calcDmg(raw,'magic',t);applyDmg(t,dmg);
+  });
+
+  if(!hitEnemy&&key!=='r'){
+    log(`${cl} ${ANNIE.skills[key].key} → (${target.x},${target.y}) 빗나감`,'log-miss');
+  }
+
+  // Summon tibbers
+  if(key==='r'&&skill.summon&&!caster.tibbers){
+    if(!hitEnemy){
+      log(`🔥🧸 ${cl} 소환:티버!! → (${target.x},${target.y})`,'log-ult');
+      screenShake();ultFlash(caster.team==='blue'?'rgba(100,0,255,0.4)':'rgba(255,0,100,0.4)');
+    }
+    const tib={type:'tibbers',team:caster.team,x:target.x,y:target.y,hp:300,maxHp:300,ad:40,alive:true,armor:0,mr:0};
+    caster.tibbers=tib;state.tibbersList.push(tib);
+  }
 }
 
-// ============ TURN FLOW ============
-function endPlayerTurn() {
-  document.getElementById('target-select').style.display='none';
-  state.moveMode=false;
-  if(checkGameOver()){render();return;}
-  aiTurn(); if(checkGameOver()){render();return;}
-  minionTurns(); if(checkGameOver()){render();return;}
-  towerAttacks(); if(checkGameOver()){render();return;}
-  tibbersAI(); if(checkGameOver()){render();return;}
+// ============ TIBBERS AI ============
+function tibbersAI(){
+  for(const tib of state.tibbersList){
+    if(!tib.alive)continue;
+    const enemy=tib.team==='blue'?state.enemy:state.player;
+    if(enemy.alive&&dist({x:tib.x,y:tib.y},{x:enemy.x,y:enemy.y})<=1){
+      const dmg=calcDmg(tib.ad,'physical',enemy);applyDmg(enemy,dmg);
+      log(`🧸 티버 → ${enemy.team==='blue'?'🔵':'🔴'} ${dmg}`,'log-dmg');
+      if(!enemy.alive)log('🧸 티버가 챔피언 처치!','log-kill');
+    }else if(enemy.alive){
+      const dx=Math.sign(enemy.x-tib.x),dy=Math.sign(enemy.y-tib.y);
+      if(dx!==0&&isWalkable(tib.x+dx,tib.y))tib.x+=dx;
+      else if(dy!==0&&isWalkable(tib.x,tib.y+dy))tib.y+=dy;
+    }
+  }
+}
 
-  for(let k of['q','w','e','r']){if(state.player.cooldowns[k]>0)state.player.cooldowns[k]--;if(state.enemy.cooldowns[k]>0)state.enemy.cooldowns[k]--;}
-  state.player.stunned=false;state.enemy.stunned=false;
-  state.player.mp=Math.min(state.player.maxMp,state.player.mp+10);
-  state.enemy.mp=Math.min(state.enemy.maxMp,state.enemy.mp+10);
-
-  state.turn++;
-  spawnMinions();
-  state.minions=state.minions.filter(m=>m.alive);
+function cleanDead(){
   state.tibbersList=state.tibbersList.filter(t=>t.alive);
   if(state.player.tibbers&&!state.player.tibbers.alive)state.player.tibbers=null;
   if(state.enemy.tibbers&&!state.enemy.tibbers.alive)state.enemy.tibbers=null;
-
-  log(`━━━ 턴 ${state.turn} ━━━`,'log-turn');
-  render();
 }
 
-// ============ AI ============
-function aiTurn() {
-  const ai=state.enemy;
-  if(!ai.alive)return;
-  if(ai.stunned){log('🔴 스턴! 턴 스킵','log-info');return;}
-  const p=state.player;
-
-  if(ai.skillLevels.r>0&&ai.cooldowns.r===0&&ai.mp>=100&&p.alive&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){executeSkill(ai,'r',p);return;}
-  if(ai.skillLevels.q>0&&ai.cooldowns.q===0&&ai.mp>=60){
-    const ms=state.minions.filter(m=>m.alive&&m.team==='blue'&&dist({x:ai.x,y:ai.y},{x:m.x,y:m.y})<=3);
-    const lh=ms.find(m=>m.hp<=80);
-    if(lh){executeSkill(ai,'q',lh);return;}
-    if(p.alive&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){executeSkill(ai,'q',p);return;}
-  }
-  if(ai.skillLevels.w>0&&ai.cooldowns.w===0&&ai.mp>=70){const ts=getInRange(ai,2);if(ts.length){executeSkill(ai,'w',ts[0]);return;}}
-  if(ai.skillLevels.e>0&&ai.cooldowns.e===0&&ai.shield===0&&ai.mp>=40){executeSkill(ai,'e',null);return;}
-
-  const aa=getInRange(ai,2);
-  if(aa.length){const lm=aa.find(t=>t.type==='minion'&&t.hp<=ai.ad);autoAttack(ai,lm||aa.find(t=>t.type==='champion')||aa[0]);return;}
-
-  // Move toward player or center
-  const tx=p.alive?p.x:7, ty=p.alive?p.y:MID_ROW;
-  const dx=Math.sign(tx-ai.x), dy=Math.sign(ty-ai.y);
-  if(dx!==0&&canMoveTo(ai.x+dx,ai.y,ai)){ai.x+=dx;log(`🔴 이동 → (${ai.x},${ai.y})`,'log-info');return;}
-  if(dy!==0&&canMoveTo(ai.x,ai.y+dy,ai)){ai.y+=dy;log(`🔴 이동 → (${ai.x},${ai.y})`,'log-info');}
+// ============ EFFECTS ============
+function screenShake(){document.getElementById('game').classList.add('screen-shake');setTimeout(()=>document.getElementById('game').classList.remove('screen-shake'),400);}
+function ultFlash(c){const o=document.getElementById('ult-overlay');o.style.background=c;o.classList.add('flash');setTimeout(()=>o.classList.remove('flash'),200);}
+function spawnParticles(n,c){for(let i=0;i<n;i++){const p=document.createElement('div');p.className='particle';const s=4+Math.random()*8;p.style.width=s+'px';p.style.height=s+'px';p.style.background=c;p.style.boxShadow=`0 0 ${s}px ${c}`;p.style.left=(20+Math.random()*60)+'vw';p.style.top=(20+Math.random()*60)+'vh';document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}}
+function showGameOver(v){
+  const ov=document.getElementById('game-over-overlay'),txt=document.getElementById('game-over-text'),sub=document.getElementById('game-over-sub');
+  if(v){ov.classList.add('show','victory');txt.textContent='VICTORY';sub.textContent='적 챔피언을 처치했습니다!';spawnParticles(40,'#f0c040');setTimeout(()=>spawnParticles(30,'#ff8800'),300);}
+  else{ov.classList.add('show','defeat');txt.textContent='DEFEAT';sub.textContent='챔피언이 쓰러졌습니다...';screenShake();setTimeout(()=>screenShake(),300);}
 }
-
-function minionTurns() {
-  for(const m of state.minions){
-    if(!m.alive)continue;
-    const et=m.team==='blue'?'red':'blue';
-    const enemies=[...state.minions.filter(e=>e.alive&&e.team===et)];
-    const ec=m.team==='blue'?state.enemy:state.player;
-    if(ec.alive)enemies.push(ec);
-    state.towers.filter(t=>t.alive&&t.team===et).forEach(t=>enemies.push(t));
-    let closest=null,cd=999;
-    for(const e of enemies){const d=dist({x:m.x,y:m.y},{x:e.x,y:e.y});if(d<cd){cd=d;closest=e;}}
-    if(closest&&cd<=1){
-      const dmg=calcDmg(m.ad,'physical',closest);applyDmg(closest,dmg);
-      if(!closest.alive){
-        if(closest.type==='champion') log('💀 미니언이 챔피언 처치!','log-kill');
-        // Grant XP to nearby champion (within 4 tiles) if minion died
-        if(closest.type==='minion'){
-          const nearBlue=dist({x:state.player.x,y:state.player.y},{x:closest.x,y:closest.y})<=4;
-          const nearRed=dist({x:state.enemy.x,y:state.enemy.y},{x:closest.x,y:closest.y})<=4;
-          if(nearBlue&&closest.team==='red') grantXP(state.player, Math.floor(MINION_XP*0.6));
-          if(nearRed&&closest.team==='blue') grantXP(state.enemy, Math.floor(MINION_XP*0.6));
-        }
-      }
-    } else if(closest){
-      // Move toward closest enemy along lane
-      const dx=Math.sign(closest.x-m.x), dy=Math.sign(closest.y-m.y);
-      if(dx!==0&&canMoveTo(m.x+dx,m.y,m)){m.x+=dx;}
-      else if(dy!==0&&canMoveTo(m.x,m.y+dy,m)){m.y+=dy;}
-    }
-  }
-}
-
-function towerAttacks() {
-  for(const tw of state.towers){
-    if(!tw.alive)continue;
-    const et=tw.team==='blue'?'red':'blue';
-    const ir=[];
-    state.minions.filter(m=>m.alive&&m.team===et&&dist({x:tw.x,y:tw.y},{x:m.x,y:m.y})<=tw.range).forEach(m=>ir.push(m));
-    const ec=tw.team==='blue'?state.enemy:state.player;
-    if(ec.alive&&dist({x:tw.x,y:tw.y},{x:ec.x,y:ec.y})<=tw.range)ir.push(ec);
-    state.tibbersList.filter(t=>t.alive&&t.team===et&&dist({x:tw.x,y:tw.y},{x:t.x,y:t.y})<=tw.range).forEach(t=>ir.push(t));
-    if(ir.length){
-      const tgt=ir.find(t=>t.type==='minion')||ir[0];
-      const dmg=calcDmg(tw.ad,'physical',tgt);applyDmg(tgt,dmg);
-      const tl=tw.team==='blue'?'🔵':'🔴';
-      log(`🏰${tl} 타워 → ${tgt.name||tgt.type} ${dmg}`,'log-dmg');
-    }
-  }
-}
-
-function tibbersAI() {
-  for(const tib of state.tibbersList){
-    if(!tib.alive)continue;
-    const enemies=getEnemyTargets(tib);
-    let closest=null,cd=999;
-    for(const e of enemies){const d=dist({x:tib.x,y:tib.y},{x:e.x,y:e.y});if(d<cd){cd=d;closest=e;}}
-    if(closest&&cd<=1){const dmg=calcDmg(tib.ad,'physical',closest);applyDmg(closest,dmg);log(`🧸 티버 → ${closest.name||closest.type} ${dmg}`,'log-dmg');}
-    else if(closest){const dx=Math.sign(closest.x-tib.x),dy=Math.sign(closest.y-tib.y);if(dx!==0&&canMoveTo(tib.x+dx,tib.y,tib))tib.x+=dx;else if(dy!==0&&canMoveTo(tib.x,tib.y+dy,tib))tib.y+=dy;}
-  }
-}
-
-function checkGameOver() {
-  const bt=state.towers.find(t=>t.team==='blue'),rt=state.towers.find(t=>t.team==='red');
-  if(!bt.alive||!state.player.alive){state.gameOver=true;showGameOver(false);return true;}
-  if(!rt.alive||!state.enemy.alive){state.gameOver=true;showGameOver(true);return true;}
+function checkGameOver(){
+  if(!state.player.alive){state.gameOver=true;showGameOver(false);return true;}
+  if(!state.enemy.alive){state.gameOver=true;showGameOver(true);return true;}
   return false;
 }
 
 // ============ RENDER ============
-function render() { renderMap(); renderStats(); renderActions(); renderLog(); }
+function render(){renderMap();renderStats();renderPhase();renderActions();renderLog();}
 
-function renderMap() {
-  const mapEl = document.getElementById('map');
-  // Build unit lookup: key "x,y" -> array of units
-  const units = {};
-  const addUnit = (x,y,icon,sub,hp,maxHp) => {
-    const k=x+','+y;
-    if(!units[k])units[k]=[];
-    units[k].push({icon,sub,hp,maxHp});
-  };
-  for(const tw of state.towers) if(tw.alive) addUnit(tw.x,tw.y, tw.team==='blue'?'🏰':'🏰', tw.team==='blue'?'🔵':'🔴', tw.hp, tw.maxHp);
-  for(const m of state.minions) if(m.alive) addUnit(m.x,m.y, m.team==='blue'?'👤':'👤', m.team==='blue'?'🔵':'🔴', m.hp, m.maxHp);
-  for(const t of state.tibbersList) if(t.alive) addUnit(t.x,t.y,'🧸',t.team==='blue'?'🔵':'🔴',t.hp,t.maxHp);
-  if(state.player.alive) addUnit(state.player.x,state.player.y,'😈','🔵',state.player.hp,state.player.maxHp);
-  if(state.enemy.alive) addUnit(state.enemy.x,state.enemy.y,'😈','🔴',state.enemy.hp,state.enemy.maxHp);
+function renderMap(){
+  const mapEl=document.getElementById('map');
+  const p=state.player;
+  const isRevealTurn=state.lastRevealTurn===state.turn||(state.lastRevealTurn===state.turn-1);
+  const revealPos=state.lastEnemyReveal;
 
-  // Moveable cells for move mode
-  const moveCells = new Set();
-  if(state.moveMode) {
-    const dirs = [[0,-1],[0,1],[-1,0],[1,0]];
-    for(const [dx,dy] of dirs) {
-      const nx=state.player.x+dx, ny=state.player.y+dy;
-      if(canMoveTo(nx,ny,state.player)) moveCells.add(nx+','+ny);
+  // Target mode cells
+  const targetCells=new Set();
+  const moveCells=new Set();
+  if(state.targetMode){
+    if(state.targetMode.type==='move'){
+      const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
+      for(const[dx,dy]of dirs){const nx=p.x+dx,ny=p.y+dy;if(isWalkable(nx,ny))moveCells.add(nx+','+ny);}
+    }else{
+      const range=state.targetMode.range||3;
+      for(let y=1;y<ROWS-1;y++)for(let x=1;x<COLS-1;x++){
+        if(dist({x:p.x,y:p.y},{x,y})<=range)targetCells.add(x+','+y);
+      }
     }
   }
 
@@ -638,98 +586,155 @@ function renderMap() {
   for(let y=0;y<ROWS;y++){
     html+='<tr>';
     for(let x=0;x<COLS;x++){
-      const tile=MAP_TEMPLATE[y][x];
-      let cls = tile===0?'wall':tile===2?'grass':'lane';
-      // Tower cells
-      for(const tw of state.towers) if(tw.alive&&tw.x===x&&tw.y===y) cls = tw.team==='blue'?'tower-blue':'tower-red';
-
+      const w=MAP[y][x]===0;
+      let cls=w?'wall':'walkable';
       const k=x+','+y;
-      const isMove = moveCells.has(k);
-      if(isMove) cls+=' highlight';
+      if(moveCells.has(k))cls+=' highlight';
+      else if(targetCells.has(k))cls+=' target-mode';
+      // Reveal flash
+      if(isRevealTurn&&revealPos&&revealPos.x===x&&revealPos.y===y)cls+=' reveal-flash';
 
-      let content = '';
-      if(units[k]) {
-        // Show first unit (stack if multiple)
-        const u = units[k];
-        if(u.length===1) {
-          content = `<span class="unit">${u[0].icon}</span><span class="sub">${u[0].sub}</span>`;
-        } else {
-          content = `<span class="unit">${u.map(a=>a.icon).join('')}</span><span class="sub">${u.map(a=>a.sub).join('')}</span>`;
-        }
+      let content='';
+
+      // Player
+      if(p.alive&&p.x===x&&p.y===y){
+        content=`<span class="unit">😈</span><span class="sub">🔵</span>`;
+      }
+      // Player's tibbers
+      const myTib=state.tibbersList.find(t=>t.alive&&t.team==='blue'&&t.x===x&&t.y===y);
+      if(myTib)content=`<span class="unit">🧸</span><span class="sub">🔵</span>`;
+
+      // Enemy tibbers (visible)
+      const eTib=state.tibbersList.find(t=>t.alive&&t.team==='red'&&t.x===x&&t.y===y);
+      if(eTib)content=`<span class="unit">🧸</span><span class="sub">🔴</span>`;
+
+      // Last known enemy position (ghost)
+      if(revealPos&&revealPos.x===x&&revealPos.y===y&&!isRevealTurn&&state.turn-state.lastRevealTurn<=3){
+        if(!content)content=`<span class="unit ghost">👻</span><span class="sub" style="color:#ff444488">🔴?</span>`;
+      }
+      // Reveal current position
+      if(isRevealTurn&&state.enemy.alive&&state.enemy.x===x&&state.enemy.y===y){
+        content=`<span class="unit">😈</span><span class="sub">🔴</span>`;
       }
 
-      const onclick = isMove ? `onclick="playerMove(${x-state.player.x},${y-state.player.y})"` : '';
+      // Minions
+      const minion=state.minions.find(m=>m.alive&&m.x===x&&m.y===y);
+      if(minion&&!content){content=`<span class="minion-marker">🟡</span>`;}
+      else if(minion&&content){content+=`<span style="font-size:8px">🟡</span>`;}
+
+      const onclick=(moveCells.has(k)||targetCells.has(k))?`onclick="selectCell(${x},${y})"`:'';
       html+=`<td class="${cls}" ${onclick}>${content}</td>`;
     }
     html+='</tr>';
   }
   html+='</table>';
-  mapEl.innerHTML = html;
+  mapEl.innerHTML=html;
 }
 
-function renderStats() {
-  const renderPanel = (champ, label, id) => {
-    const hpPct=Math.max(0,(champ.hp/champ.maxHp)*100);
-    const mpPct=Math.max(0,(champ.mp/champ.maxMp)*100);
+function renderStats(){
+  const renderPanel=(c,label,id,showFull)=>{
+    const hpPct=Math.max(0,(c.hp/c.maxHp)*100);
+    const mpPct=Math.max(0,(c.mp/c.maxMp)*100);
     const needed=ANNIE.skills.passive.stacksNeeded;
-    let stacks='';
-    for(let i=0;i<needed;i++){const c=i<champ.passiveStacks?(champ.passiveStacks>=needed-1?'stack ready':'stack filled'):'stack';stacks+=`<span class="${c}"></span>`;}
-    const xpNeeded = champ.level<MAX_LEVEL ? XP_PER_LEVEL[champ.level] : 0;
-    const xpPct = xpNeeded>0 ? Math.floor((champ.xp/xpNeeded)*100) : 100;
-    const badges=['q','w','e','r'].map(k=>{const s=ANNIE.skills[k];const sl=champ.skillLevels[k];const cd=champ.cooldowns[k];if(sl<=0)return`<span class="skill-badge on-cd">${s.key}(-)</span>`;if(cd>0)return`<span class="skill-badge on-cd">${s.key}${sl}(${cd})</span>`;if(champ.mp<s.manaCost)return`<span class="skill-badge on-cd">${s.key}${sl}</span>`;return`<span class="skill-badge ready">${s.key}${sl}</span>`;}).join('');
-    document.getElementById(id).innerHTML=`
-      <h3>${label} <span style="color:#f0c040;font-size:11px">Lv.${champ.level}</span></h3>
-      <div class="bar-container bar-hp"><div class="bar-fill" style="width:${hpPct}%"></div><div class="bar-label">❤️ ${champ.hp}/${champ.maxHp}${champ.shield>0?' 🛡️'+champ.shield:''}</div></div>
-      <div class="bar-container bar-mp"><div class="bar-fill" style="width:${mpPct}%"></div><div class="bar-label">💧 ${champ.mp}/${champ.maxMp}</div></div>
-      <div class="bar-container" style="height:10px;margin-bottom:4px"><div class="bar-fill" style="width:${xpPct}%;background:linear-gradient(90deg,#8844aa,#cc66ff)"></div><div class="bar-label" style="font-size:8px">⭐ ${champ.level<MAX_LEVEL?champ.xp+'/'+xpNeeded:'MAX'}</div></div>
-      <div class="passive-bar">🔥 ${stacks}</div>
-      <div class="skill-row">${badges}</div>
-      ${champ.stunned?'<div style="color:#ff44ff;margin-top:3px;font-size:11px">⚡ 스턴!</div>':''}
-    `;
-  };
-  renderPanel(state.player,'🔵 Annie (나)','player-stats');
-  renderPanel(state.enemy,'🔴 Annie (AI)','enemy-stats');
+    let stacks='';for(let i=0;i<needed;i++){const cls=i<c.passiveStacks?(c.passiveStacks>=needed-1?'stack ready':'stack filled'):'stack';stacks+=`<span class="${cls}"></span>`;}
+    const xpN=c.level<MAX_LEVEL?XP_PER_LEVEL[c.level]:0;
+    const xpP=xpN>0?Math.floor((c.xp/xpN)*100):100;
+    const badges=['q','w','e','r'].map(k=>{const s=ANNIE.skills[k];const sl=c.skillLevels[k];const cd=c.cooldowns[k];if(sl<=0)return`<span class="skill-badge on-cd">${s.key}(-)</span>`;if(cd>0)return`<span class="skill-badge on-cd">${s.key}${sl}(${cd})</span>`;if(c.mp<s.manaCost)return`<span class="skill-badge on-cd">${s.key}${sl}</span>`;return`<span class="skill-badge ready">${s.key}${sl}</span>`;}).join('');
 
-  // Skill level-up buttons for player
-  const p = state.player;
-  if (p.skillPoints > 0 && p.alive) {
-    let lvlHtml = `<div class="skill-lvlup"><span style="font-size:10px;color:#f0c040;margin-right:4px">⬆️ 스킬 포인트: ${p.skillPoints}</span>`;
-    for (const k of ['q','w','e','r']) {
-      if (canLevelSkill(p, k)) {
-        lvlHtml += `<button onclick="levelUpSkill(state.player,'${k}')">${ANNIE.skills[k].key}↑</button>`;
+    if(showFull){
+      document.getElementById(id).innerHTML=`
+        <h3>${label} <span style="color:#f0c040;font-size:11px">Lv.${c.level}</span> <span style="color:#f0c040;font-size:10px">💰${c.gold}G</span></h3>
+        <div class="bar-container bar-hp"><div class="bar-fill" style="width:${hpPct}%"></div><div class="bar-label">❤️ ${c.hp}/${c.maxHp}${c.shield>0?' 🛡️'+c.shield:''}</div></div>
+        <div class="bar-container bar-mp"><div class="bar-fill" style="width:${mpPct}%"></div><div class="bar-label">💧 ${c.mp}/${c.maxMp}</div></div>
+        <div class="bar-container" style="height:10px;margin-bottom:4px"><div class="bar-fill" style="width:${xpP}%;background:linear-gradient(90deg,#8844aa,#cc66ff)"></div><div class="bar-label" style="font-size:8px">⭐ ${c.level<MAX_LEVEL?c.xp+'/'+xpN:'MAX'}</div></div>
+        <div class="passive-bar">🔥 ${stacks}</div>
+        <div class="skill-row">${badges}</div>
+        ${c.stunned?'<div style="color:#ff44ff;margin-top:3px;font-size:11px">⚡ 스턴!</div>':''}
+      `;
+    } else {
+      // Enemy: show last known info or unknown
+      const r=state.lastEnemyReveal;
+      if(r){
+        const hpP2=Math.max(0,(r.hp/r.maxHp)*100);
+        const mpP2=Math.max(0,(r.mp/r.maxMp)*100);
+        document.getElementById(id).innerHTML=`
+          <h3>${label} <span style="color:#f0c040;font-size:11px">Lv.${r.level}</span></h3>
+          <div class="enemy-unknown">마지막 정보 (턴 ${state.lastRevealTurn})</div>
+          <div class="bar-container bar-hp"><div class="bar-fill" style="width:${hpP2}%"></div><div class="bar-label">❤️ ${r.hp}/${r.maxHp}</div></div>
+          <div class="bar-container bar-mp"><div class="bar-fill" style="width:${mpP2}%"></div><div class="bar-label">💧 ${r.mp}/${r.maxMp}</div></div>
+        `;
+      } else {
+        document.getElementById(id).innerHTML=`
+          <h3>${label}</h3>
+          <div class="enemy-unknown">👁️ 정보 없음 — ${REVEAL_INTERVAL}턴마다 공개</div>
+        `;
       }
     }
-    lvlHtml += '</div>';
-    document.getElementById('player-stats').innerHTML += lvlHtml;
+  };
+  renderPanel(state.player,'🔵 Annie (나)','player-stats',true);
+  renderPanel(state.enemy,'🔴 Annie (적)','enemy-stats',false);
+
+  // Skill level-up
+  const p=state.player;
+  if(p.skillPoints>0&&p.alive){
+    let h=`<div class="skill-lvlup"><span style="font-size:10px;color:#f0c040;margin-right:4px">⬆️ 스킬 포인트: ${p.skillPoints}</span>`;
+    for(const k of['q','w','e','r'])if(canLvlSkill(p,k))h+=`<button onclick="lvlSkill(state.player,'${k}')">${ANNIE.skills[k].key}↑</button>`;
+    h+='</div>';
+    document.getElementById('player-stats').innerHTML+=h;
   }
 }
 
-function renderActions() {
+function renderPhase(){
+  const el=document.getElementById('phase-bar');
+  if(state.gameOver){el.innerHTML='';return;}
+
+  const revealIn=REVEAL_INTERVAL-(state.turn%REVEAL_INTERVAL);
+  const revealText=revealIn===REVEAL_INTERVAL?'👁️ 이번 턴에 적 위치 공개!':`👁️ 적 위치 공개까지 ${revealIn}턴`;
+
+  let html=`<div class="phase-title">턴 ${state.turn} — ${revealText}</div>`;
+  html+=`<div class="ai-action">🔴 AI 행동: ${state.aiAction?state.aiAction.desc:'...'}</div>`;
+  html+=`<div class="player-action">🔵 내 행동: ${state.playerAction?state.playerAction.desc:'선택하세요'}</div>`;
+  el.innerHTML=html;
+}
+
+function renderActions(){
   const el=document.getElementById('actions');
   const p=state.player;
   if(state.gameOver||!p.alive){el.innerHTML='';return;}
-  if(state.phase==='target'){el.innerHTML='<em>타겟을 선택하세요...</em>';return;}
-  if(p.stunned){el.innerHTML='<button onclick="endPlayerTurn()">⚡ 스턴! (턴 넘기기)</button>';return;}
 
-  if(state.moveMode) {
-    el.innerHTML='<button class="move" onclick="cancelMoveMode()">❌ 이동 취소</button>';
+  if(state.targetMode){
+    let label='';
+    if(state.targetMode.type==='move')label='이동할 칸을 선택하세요';
+    else if(state.targetMode.type==='attack')label='공격할 좌표를 선택하세요';
+    else label=`${ANNIE.skills[state.targetMode.key].key} 대상 좌표를 선택하세요`;
+    el.innerHTML=`<span style="color:#f0c040;font-size:12px">${label}</span> <button class="cancel" onclick="cancelTarget()">❌ 취소</button>`;
+    return;
+  }
+
+  if(p.stunned){
+    state.playerAction={type:'wait',desc:'⚡ 스턴 상태'};
+    el.innerHTML=`<button class="confirm" onclick="confirmActions()">⚡ 스턴 — 확정</button>`;
     return;
   }
 
   const can=k=>p.skillLevels[k]>0&&p.cooldowns[k]===0&&p.mp>=ANNIE.skills[k].manaCost;
-  el.innerHTML=`
-    <button class="move" onclick="enterMoveMode()">🚶 이동</button>
-    <button class="attack" onclick="playerAA()">⚔️ 평타</button>
-    <button class="skill-q" onclick="playerSkill('q')" ${!can('q')?'disabled':''}>Q 붕괴</button>
-    <button class="skill-w" onclick="playerSkill('w')" ${!can('w')?'disabled':''}>W 소각</button>
-    <button class="skill-e" onclick="playerSkill('e')" ${!can('e')?'disabled':''}>E 보호막</button>
-    <button class="skill-r" onclick="playerSkill('r')" ${!can('r')?'disabled':''}>🔥 R 티버</button>
+  let html=`
+    <button class="move" onclick="setPlayerMove()">🚶 이동</button>
+    <button class="attack" onclick="setPlayerAttack()">⚔️ 평타</button>
+    <button class="skill-q" onclick="setPlayerSkill('q')" ${!can('q')?'disabled':''}>Q 붕괴</button>
+    <button class="skill-w" onclick="setPlayerSkill('w')" ${!can('w')?'disabled':''}>W 소각</button>
+    <button class="skill-e" onclick="setPlayerSkill('e')" ${!can('e')?'disabled':''}>E 보호막</button>
+    <button class="skill-r" onclick="setPlayerSkill('r')" ${!can('r')?'disabled':''}>🔥 R 티버</button>
   `;
+  if(state.playerAction){
+    html+=`<button class="confirm" onclick="confirmActions()">✅ 확정</button>`;
+  }
+  el.innerHTML=html;
 }
 
-function renderLog() {
+function renderLog(){
   const el=document.getElementById('log');
-  const recent=state.logs.slice(-50);
+  const recent=state.logs.slice(-60);
   el.innerHTML=recent.map(l=>`<div class="${l.cls}">${l.msg}</div>`).join('');
   el.scrollTop=el.scrollHeight;
 }

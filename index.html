@@ -337,73 +337,9 @@ function planPhase(){
   state.phase='plan';
   state.playerAction=null;
   state.targetMode=null;
-  state.aiLocked=false;
-  state.playerLocked=false;
-  // AI decides first
+  // AI decides blindly (no knowledge of player's choice)
   state.aiAction=aiDecideAction();
   render();
-}
-
-// After player confirms, AI gets a chance to react
-function aiReact(){
-  // AI sees player's action and may change its mind
-  const old=state.aiAction;
-  const newAction=aiDecideReaction(state.playerAction);
-  if(newAction&&newAction.desc!==old.desc){
-    state.aiAction=newAction;
-    log(`🔴 AI가 행동을 변경했습니다!`,'log-info');
-    // Player gets one more chance
-    state.playerLocked=false;
-    state.aiLocked=true;
-    render();
-    return false; // not ready to execute
-  }
-  state.aiLocked=true;
-  return true; // ready
-}
-
-function aiDecideReaction(playerAction){
-  const ai=state.enemy,p=state.player;
-  if(!ai.alive||ai.stunned)return null;
-
-  // AI only knows player position if revealed recently
-  const knowsPlayer=state.lastRevealTurn>0&&(state.turn-state.lastRevealTurn)<=2;
-
-  // If player is attacking a cell near AI, try to dodge (or flash)
-  if(playerAction&&(playerAction.type==='attack'||playerAction.type==='skill')&&playerAction.target){
-    const t=playerAction.target;
-    const d=dist({x:ai.x,y:ai.y},t);
-    const aoe=(playerAction.type==='skill'&&ANNIE.skills[playerAction.key]?.aoeRadius)||0;
-    if(d<=aoe){
-      // Try normal move first
-      const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
-      for(const[dx,dy]of dirs){
-        const nx=ai.x+dx,ny=ai.y+dy;
-        if(isWalkable(nx,ny)&&dist({x:nx,y:ny},t)>aoe){
-          return{type:'move',dir:{x:dx,y:dy},desc:'🚶 이동'};
-        }
-      }
-      // Can't dodge by walking — flash if available and skill is dangerous
-      if(ai.flashCd===0&&(playerAction.type==='skill'||ai.hp<ai.maxHp*0.3)){
-        // Find safe flash destination far from target
-        let bestDest=null,bestD=0;
-        for(let fy=1;fy<ROWS-1;fy++)for(let fx=1;fx<COLS-1;fx++){
-          const fd=dist({x:ai.x,y:ai.y},{x:fx,y:fy});
-          if(fd>=1&&fd<=FLASH_RANGE&&isWalkable(fx,fy)){
-            const safety=dist({x:fx,y:fy},t);
-            if(safety>aoe&&safety>bestD){bestD=safety;bestDest={x:fx,y:fy};}
-          }
-        }
-        if(bestDest){
-          execFlash(ai,bestDest.x,bestDest.y);
-          return{type:'wait',desc:'✨ 점멸 회피!'};
-        }
-      }
-    }
-  }
-
-  // AI can NOT see player's move destination — no reaction to movement
-  return null;
 }
 
 function aiDecideAction(){
@@ -427,13 +363,34 @@ function aiDecideAction(){
   }
 
   if(knowsPlayer){
-    if(ai.skillLevels.r>0&&ai.cooldowns.r===0&&ai.mp>=100&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){
+    const dToP=dist({x:ai.x,y:ai.y},{x:p.x,y:p.y});
+
+    // Flash + skill combo: if out of range but flash can close the gap
+    if(ai.flashCd===0&&dToP>3&&dToP<=3+FLASH_RANGE){
+      // Flash toward player to get in skill range
+      let bestFlash=null,bestFD=999;
+      for(let fy=1;fy<ROWS-1;fy++)for(let fx=1;fx<COLS-1;fx++){
+        const fd=dist({x:ai.x,y:ai.y},{x:fx,y:fy});
+        const dp=dist({x:fx,y:fy},{x:p.x,y:p.y});
+        if(fd>=1&&fd<=FLASH_RANGE&&isWalkable(fx,fy)&&dp<=3&&dp<bestFD){bestFD=dp;bestFlash={x:fx,y:fy};}
+      }
+      if(bestFlash&&ai.skillLevels.r>0&&ai.cooldowns.r===0&&ai.mp>=100){
+        execFlash(ai,bestFlash.x,bestFlash.y);
+        return{type:'skill',key:'r',target:{x:p.x,y:p.y},desc:`🔥 R 티버 → (${p.x},${p.y})`};
+      }
+      if(bestFlash&&ai.skillLevels.q>0&&ai.cooldowns.q===0&&ai.mp>=60){
+        execFlash(ai,bestFlash.x,bestFlash.y);
+        return{type:'skill',key:'q',target:{x:p.x,y:p.y},desc:`Q 붕괴 → (${p.x},${p.y})`};
+      }
+    }
+
+    if(ai.skillLevels.r>0&&ai.cooldowns.r===0&&ai.mp>=100&&dToP<=3){
       return{type:'skill',key:'r',target:{x:p.x,y:p.y},desc:`🔥 R 티버 → (${p.x},${p.y})`};
     }
-    if(ai.skillLevels.q>0&&ai.cooldowns.q===0&&ai.mp>=60&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){
+    if(ai.skillLevels.q>0&&ai.cooldowns.q===0&&ai.mp>=60&&dToP<=3){
       return{type:'skill',key:'q',target:{x:p.x,y:p.y},desc:`Q 붕괴 → (${p.x},${p.y})`};
     }
-    if(ai.skillLevels.w>0&&ai.cooldowns.w===0&&ai.mp>=70&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=2){
+    if(ai.skillLevels.w>0&&ai.cooldowns.w===0&&ai.mp>=70&&dToP<=2){
       return{type:'skill',key:'w',target:{x:p.x,y:p.y},desc:`W 소각 → (${p.x},${p.y})`};
     }
   }
@@ -590,22 +547,7 @@ function shopBuy(itemId){
 
 function confirmActions(){
   if(!state.playerAction){log('⚠️ 행동을 선택하세요','log-info');render();return;}
-
-  if(!state.aiLocked){
-    // First confirm: AI reacts
-    state.playerLocked=true;
-    const ready=aiReact();
-    if(!ready)return; // AI changed, player can adjust
-  }
-
-  // Both locked or AI didn't change
-  executeTurn();
-}
-
-function finalConfirm(){
-  // Player accepts after AI reaction
-  state.playerLocked=true;
-  state.aiLocked=true;
+  // Blind simultaneous — both committed, execute immediately
   executeTurn();
 }
 
@@ -1087,11 +1029,8 @@ function renderPhase(){
   const revealText=revealIn===REVEAL_INTERVAL?'👁️ 이번 턴에 적 위치 공개!':`👁️ 적 위치 공개까지 ${revealIn}턴`;
 
   let html=`<div class="phase-title">턴 ${state.turn} — ${revealText}</div>`;
-  html+=`<div class="ai-action">🔴 AI 행동: ${state.aiAction?state.aiAction.desc:'...'} ${state.aiLocked?'🔒':''}</div>`;
-  html+=`<div class="player-action">🔵 내 행동: ${state.playerAction?state.playerAction.desc:'선택하세요'} ${state.playerLocked?'🔒':''}</div>`;
-  if(state.aiLocked&&!state.playerLocked){
-    html+=`<div style="color:#f0c040;font-size:11px;margin-top:4px">⚠️ AI가 행동을 변경했습니다! 다시 선택하거나 확정하세요.</div>`;
-  }
+  html+=`<div class="ai-action">🔴 AI 행동: ❓ (확정 후 공개)</div>`;
+  html+=`<div class="player-action">🔵 내 행동: ${state.playerAction?state.playerAction.desc:'선택하세요'}</div>`;
   el.innerHTML=html;
 }
 
@@ -1129,12 +1068,7 @@ function renderActions(){
     <button class="skill-r" onclick="setPlayerSkill('r')" ${!can('r')?'disabled':''}>🔥 R 티버</button>
   `;
   if(state.playerAction){
-    if(state.aiLocked&&!state.playerLocked){
-      // AI reacted, player can re-choose or accept
-      html+=`<button class="confirm" onclick="finalConfirm()">✅ 이대로 확정</button>`;
-    } else {
-      html+=`<button class="confirm" onclick="confirmActions()">✅ 확정</button>`;
-    }
+    html+=`<button class="confirm" onclick="confirmActions()">✅ 확정</button>`;
   }
   el.innerHTML=html;
 }

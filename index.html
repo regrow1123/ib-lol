@@ -15,8 +15,10 @@ h1 { text-align:center; color:#f0c040; margin-bottom:2px; font-size:22px; }
 #map { display:flex; justify-content:center; margin-bottom:12px; }
 #map table { border-collapse:collapse; }
 #map td {
-  width:48px; height:48px; border:1px solid #1a1a1a; text-align:center; vertical-align:middle;
+  width:48px; height:48px; min-width:48px; min-height:48px; max-width:48px; max-height:48px;
+  border:1px solid #1a1a1a; text-align:center; vertical-align:middle;
   font-size:16px; background:#0d0d15; cursor:default; transition:background 0.15s; position:relative;
+  overflow:hidden; padding:0; line-height:48px;
 }
 #map td.wall { background:#111; }
 #map td.walkable { background:#0d0d15; }

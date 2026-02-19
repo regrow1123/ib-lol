@@ -794,7 +794,7 @@ function renderMap(){
 
       // Player
       if(p.alive&&p.x===x&&p.y===y){
-        content=`<span class="unit">🔥</span><span class="sub">🔵나</span>`;
+        content=`<span class="unit">⚔️</span><span class="sub">🔵나</span>`;
       }
       // Player's tibbers
       const myTib=state.tibbersList.find(t=>t.alive&&t.team==='blue'&&t.x===x&&t.y===y);
@@ -810,7 +810,7 @@ function renderMap(){
       }
       // Reveal current position
       if(isRevealTurn&&state.enemy.alive&&state.enemy.x===x&&state.enemy.y===y){
-        content=`<span class="unit">🔥</span><span class="sub">🔴적</span>`;
+        content=`<span class="unit">⚔️</span><span class="sub">🔴적</span>`;
       }
 
       // Epic monsters

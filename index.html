@@ -442,10 +442,27 @@ function setPlayerSkill(key){
   state.targetMode={type:'skill',key,range:s.range};
   render();
 }
+// Track previewed cell for tap-to-preview, re-tap-to-execute
+let previewedCell=null;
+
 function selectCell(x,y){
   if(!state.targetMode)return;
   const tm=state.targetMode;
   const p=state.player;
+
+  // For skills/attack: first tap = preview, second tap on same cell = execute
+  const needsPreview=tm.type==='skill'||tm.type==='attack';
+  if(needsPreview){
+    if(!previewedCell||previewedCell.x!==x||previewedCell.y!==y){
+      // First tap — show preview
+      previewedCell={x,y};
+      previewAoE(x,y);
+      return;
+    }
+    // Second tap on same cell — execute
+    previewedCell=null;
+    clearAoE();
+  }
 
   if(tm.type==='flash'){
     if(dist({x:p.x,y:p.y},{x,y})>FLASH_RANGE||dist({x:p.x,y:p.y},{x,y})<1)return;
@@ -469,12 +486,14 @@ function selectCell(x,y){
     state.playerAction={type:'skill',key:tm.key,target:{x,y},desc:`${s.key} ${s.name} → (${x},${y})`};
   }
   state.targetMode=null;
-  // Immediate execution — no confirm
+  previewedCell=null;
   executeTurn();
 }
 function cancelTarget(){
   state.phase='plan';
   state.targetMode=null;
+  previewedCell=null;
+  clearAoE();
   render();
 }
 function previewAoE(cx,cy){
@@ -1041,8 +1060,8 @@ function renderActions(){
     let label='';
     if(state.targetMode.type==='flash')label='✨ 점멸할 위치를 선택하세요';
     else if(state.targetMode.type==='move')label='이동할 칸을 선택하세요';
-    else if(state.targetMode.type==='attack')label='공격할 좌표를 선택하세요';
-    else label=`${ANNIE.skills[state.targetMode.key].key} 대상 좌표를 선택하세요`;
+    else if(state.targetMode.type==='attack')label='공격할 좌표 선택 (한번 더 탭하면 실행)';
+    else label=`${ANNIE.skills[state.targetMode.key].key} 대상 좌표 선택 (한번 더 탭하면 실행)`;
     el.innerHTML=`<span style="color:#f0c040;font-size:12px">${label}</span> <button class="cancel" onclick="cancelTarget()">❌ 취소</button>`;
     return;
   }

@@ -132,7 +132,7 @@ h1 { text-align:center; color:#f0c040; margin-bottom:2px; font-size:22px; }
 // ============ CONFIG ============
 const COLS=15, ROWS=7;
 const REVEAL_INTERVAL=5;
-const MINION_RESPAWN_INTERVAL=5;
+const MINION_RESPAWN_INTERVAL=10;
 
 // Map: 0=wall, 1=walkable
 const MAP=[];
@@ -158,8 +158,8 @@ const ANNIE={
 };
 
 const MAX_LEVEL=18;
-const XP_PER_LEVEL=[0,280,380,480,580,680,780,880,980,1080,1180,1280,1380,1480,1580,1680,1780,1880];
-const MINION_XP=60, MINION_GOLD=20, CHAMPION_KILL_XP=200;
+const XP_PER_LEVEL=[0,180,240,300,360,420,480,540,600,660,720,780,840,900,960,1020,1080,1140];
+const MINION_XP=120, MINION_GOLD=25, CHAMPION_KILL_XP=300;
 const SKILL_MAX={q:5,w:5,e:5,r:3};
 const R_UNLOCK=[6,11,16];
 const AI_SKILL_ORDER=['q','w','q','e','q','r','w','w','q','w','e','r','q','w','e','r','e','e'];
@@ -256,9 +256,61 @@ function planPhase(){
   state.phase='plan';
   state.playerAction=null;
   state.targetMode=null;
-  // AI decides action
+  state.aiLocked=false;
+  state.playerLocked=false;
+  // AI decides first
   state.aiAction=aiDecideAction();
   render();
+}
+
+// After player confirms, AI gets a chance to react
+function aiReact(){
+  // AI sees player's action and may change its mind
+  const old=state.aiAction;
+  const newAction=aiDecideReaction(state.playerAction);
+  if(newAction&&newAction.desc!==old.desc){
+    state.aiAction=newAction;
+    log(`🔴 AI가 행동을 변경했습니다!`,'log-info');
+    // Player gets one more chance
+    state.playerLocked=false;
+    state.aiLocked=true;
+    render();
+    return false; // not ready to execute
+  }
+  state.aiLocked=true;
+  return true; // ready
+}
+
+function aiDecideReaction(playerAction){
+  const ai=state.enemy,p=state.player;
+  if(!ai.alive||ai.stunned)return null;
+
+  // If player is attacking a cell near AI, try to dodge
+  if(playerAction&&(playerAction.type==='attack'||playerAction.type==='skill')&&playerAction.target){
+    const t=playerAction.target;
+    const d=dist({x:ai.x,y:ai.y},t);
+    const aoe=(playerAction.type==='skill'&&ANNIE.skills[playerAction.key]?.aoeRadius)||0;
+    if(d<=aoe){
+      // Try to move away
+      const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
+      for(const[dx,dy]of dirs){
+        const nx=ai.x+dx,ny=ai.y+dy;
+        if(isWalkable(nx,ny)&&dist({x:nx,y:ny},t)>aoe){
+          return{type:'move',dir:{x:dx,y:dy},desc:'🚶 이동'};
+        }
+      }
+    }
+  }
+
+  // If player moves, AI might attack predicted position
+  if(playerAction&&playerAction.type==='move'&&playerAction.dest){
+    const dest=playerAction.dest;
+    if(ai.skillLevels.q>0&&ai.cooldowns.q===0&&ai.mp>=60&&dist({x:ai.x,y:ai.y},dest)<=3){
+      return{type:'skill',key:'q',target:dest,desc:`Q 붕괴 → (${dest.x},${dest.y})`};
+    }
+  }
+
+  return null; // no change
 }
 
 function aiDecideAction(){
@@ -356,6 +408,22 @@ function cancelTarget(){
 
 function confirmActions(){
   if(!state.playerAction){log('⚠️ 행동을 선택하세요','log-info');render();return;}
+
+  if(!state.aiLocked){
+    // First confirm: AI reacts
+    state.playerLocked=true;
+    const ready=aiReact();
+    if(!ready)return; // AI changed, player can adjust
+  }
+
+  // Both locked or AI didn't change
+  executeTurn();
+}
+
+function finalConfirm(){
+  // Player accepts after AI reaction
+  state.playerLocked=true;
+  state.aiLocked=true;
   executeTurn();
 }
 
@@ -693,8 +761,11 @@ function renderPhase(){
   const revealText=revealIn===REVEAL_INTERVAL?'👁️ 이번 턴에 적 위치 공개!':`👁️ 적 위치 공개까지 ${revealIn}턴`;
 
   let html=`<div class="phase-title">턴 ${state.turn} — ${revealText}</div>`;
-  html+=`<div class="ai-action">🔴 AI 행동: ${state.aiAction?state.aiAction.desc:'...'}</div>`;
-  html+=`<div class="player-action">🔵 내 행동: ${state.playerAction?state.playerAction.desc:'선택하세요'}</div>`;
+  html+=`<div class="ai-action">🔴 AI 행동: ${state.aiAction?state.aiAction.desc:'...'} ${state.aiLocked?'🔒':''}</div>`;
+  html+=`<div class="player-action">🔵 내 행동: ${state.playerAction?state.playerAction.desc:'선택하세요'} ${state.playerLocked?'🔒':''}</div>`;
+  if(state.aiLocked&&!state.playerLocked){
+    html+=`<div style="color:#f0c040;font-size:11px;margin-top:4px">⚠️ AI가 행동을 변경했습니다! 다시 선택하거나 확정하세요.</div>`;
+  }
   el.innerHTML=html;
 }
 
@@ -728,7 +799,12 @@ function renderActions(){
     <button class="skill-r" onclick="setPlayerSkill('r')" ${!can('r')?'disabled':''}>🔥 R 티버</button>
   `;
   if(state.playerAction){
-    html+=`<button class="confirm" onclick="confirmActions()">✅ 확정</button>`;
+    if(state.aiLocked&&!state.playerLocked){
+      // AI reacted, player can re-choose or accept
+      html+=`<button class="confirm" onclick="finalConfirm()">✅ 이대로 확정</button>`;
+    } else {
+      html+=`<button class="confirm" onclick="confirmActions()">✅ 확정</button>`;
+    }
   }
   el.innerHTML=html;
 }

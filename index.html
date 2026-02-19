@@ -272,14 +272,16 @@ function showGameOver(victory) {
   if (victory) {
     overlay.classList.add('show','victory');
     text.textContent = 'VICTORY';
-    sub.textContent = '적 타워를 파괴했습니다!';
+    const rt = state.towers.find(t=>t.team==='red');
+    sub.textContent = !state.enemy.alive ? '적 챔피언을 처치했습니다!' : '적 타워를 파괴했습니다!';
     spawnParticles(40, '#f0c040');
     setTimeout(() => spawnParticles(30, '#ff8800'), 300);
     setTimeout(() => spawnParticles(20, '#ffee88'), 600);
   } else {
     overlay.classList.add('show','defeat');
     text.textContent = 'DEFEAT';
-    sub.textContent = '아군 타워가 파괴되었습니다...';
+    const bt = state.towers.find(t=>t.team==='blue');
+    sub.textContent = !state.player.alive ? '챔피언이 쓰러졌습니다...' : '아군 타워가 파괴되었습니다...';
     screenShake();
     setTimeout(() => screenShake(), 300);
   }
@@ -515,8 +517,8 @@ function tibbersAI() {
 // ============ GAME OVER ============
 function checkGameOver() {
   const bt = state.towers.find(t=>t.team==='blue'), rt = state.towers.find(t=>t.team==='red');
-  if (!bt.alive) { state.gameOver=true; showGameOver(false); return true; }
-  if (!rt.alive) { state.gameOver=true; showGameOver(true); return true; }
+  if (!bt.alive || !state.player.alive) { state.gameOver=true; showGameOver(false); return true; }
+  if (!rt.alive || !state.enemy.alive) { state.gameOver=true; showGameOver(true); return true; }
   return false;
 }
 

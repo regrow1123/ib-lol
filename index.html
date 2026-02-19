@@ -285,13 +285,15 @@ function aiDecideReaction(playerAction){
   const ai=state.enemy,p=state.player;
   if(!ai.alive||ai.stunned)return null;
 
+  // AI only knows player position if revealed recently
+  const knowsPlayer=state.lastRevealTurn>0&&(state.turn-state.lastRevealTurn)<=2;
+
   // If player is attacking a cell near AI, try to dodge
   if(playerAction&&(playerAction.type==='attack'||playerAction.type==='skill')&&playerAction.target){
     const t=playerAction.target;
     const d=dist({x:ai.x,y:ai.y},t);
     const aoe=(playerAction.type==='skill'&&ANNIE.skills[playerAction.key]?.aoeRadius)||0;
     if(d<=aoe){
-      // Try to move away
       const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
       for(const[dx,dy]of dirs){
         const nx=ai.x+dx,ny=ai.y+dy;
@@ -302,15 +304,8 @@ function aiDecideReaction(playerAction){
     }
   }
 
-  // If player moves, AI might attack predicted position
-  if(playerAction&&playerAction.type==='move'&&playerAction.dest){
-    const dest=playerAction.dest;
-    if(ai.skillLevels.q>0&&ai.cooldowns.q===0&&ai.mp>=60&&dist({x:ai.x,y:ai.y},dest)<=3){
-      return{type:'skill',key:'q',target:dest,desc:`Q 붕괴 → (${dest.x},${dest.y})`};
-    }
-  }
-
-  return null; // no change
+  // AI can NOT see player's move destination — no reaction to movement
+  return null;
 }
 
 function aiDecideAction(){
@@ -322,10 +317,18 @@ function aiDecideAction(){
   const nearMinion=state.minions.find(m=>m.alive&&dist({x:ai.x,y:ai.y},{x:m.x,y:m.y})<=1);
   if(nearMinion)return{type:'attack',target:{x:nearMinion.x,y:nearMinion.y},desc:`⚔️ 평타 → (${nearMinion.x},${nearMinion.y})`};
 
-  // Try skills on player if know position (within last 2 turns of reveal)
+  // AI only knows player position if revealed recently (within 2 turns)
   const knowsPlayer=state.lastRevealTurn>0&&(state.turn-state.lastRevealTurn)<=2;
+  // AI's guess of player position — last known or random
+  let guessX=p.x, guessY=p.y; // only accurate if knowsPlayer
+  if(!knowsPlayer&&state.lastEnemyReveal){
+    // AI remembers player's last revealed position but it's stale — guess nearby
+    // Not accurate, just a rough area guess
+    guessX=state.lastPlayerRevealX||(COLS>>1);
+    guessY=state.lastPlayerRevealY||(ROWS>>1);
+  }
 
-  if(knowsPlayer||dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){
+  if(knowsPlayer){
     if(ai.skillLevels.r>0&&ai.cooldowns.r===0&&ai.mp>=100&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){
       return{type:'skill',key:'r',target:{x:p.x,y:p.y},desc:`🔥 R 티버 → (${p.x},${p.y})`};
     }
@@ -458,6 +461,9 @@ function executeTurn(){
   if(state.turn%REVEAL_INTERVAL===0){
     state.lastRevealTurn=state.turn;
     state.lastEnemyReveal={x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,mp:e.mp,maxMp:e.maxMp,level:e.level};
+    // AI also learns player position on reveal
+    state.lastPlayerRevealX=p.x;
+    state.lastPlayerRevealY=p.y;
     log(`👁️ 적 위치 공개! (${e.x},${e.y}) HP:${e.hp}/${e.maxHp} MP:${e.mp}/${e.maxMp} Lv.${e.level}`,'log-reveal');
   }
 

@@ -211,6 +211,23 @@ function aiAutoLevelSkills(champ) {
 // ============ UTIL ============
 function dist(a, b) { return Math.abs(a.x-b.x)+Math.abs(a.y-b.y); } // Manhattan
 function isWalkable(x, y) { return x>=0 && x<COLS && y>=0 && y<ROWS && MAP_TEMPLATE[y][x] !== 0; }
+function isOccupied(x, y, excludeUnit) {
+  if (!state) return false;
+  const units = getAllUnits();
+  return units.some(u => u !== excludeUnit && u.alive && u.x === x && u.y === y);
+}
+function canMoveTo(x, y, mover) {
+  return isWalkable(x, y) && !isOccupied(x, y, mover);
+}
+function getAllUnits() {
+  const u = [];
+  if (state.player.alive) u.push(state.player);
+  if (state.enemy.alive) u.push(state.enemy);
+  state.towers.forEach(t => { if (t.alive) u.push(t); });
+  state.minions.forEach(m => { if (m.alive) u.push(m); });
+  state.tibbersList.forEach(t => { if (t.alive) u.push(t); });
+  return u;
+}
 
 // ============ STATE ============
 let state;
@@ -284,12 +301,27 @@ function applyDmg(target, amount) {
   return amount;
 }
 
+function findEmptyNear(x, y) {
+  if (!isOccupied(x, y, null) && isWalkable(x, y)) return {x, y};
+  const dirs=[[0,1],[0,-1],[1,0],[-1,0],[0,2],[0,-2],[1,1],[1,-1],[-1,1],[-1,-1]];
+  for (const [dx,dy] of dirs) {
+    const nx=x+dx, ny=y+dy;
+    if (isWalkable(nx,ny) && !isOccupied(nx,ny,null)) return {x:nx, y:ny};
+  }
+  return null;
+}
 function spawnMinions() {
   if (state.turn % MINION_SPAWN_INTERVAL === 1 || state.turn === 1) {
-    state.minionIdCounter++;
-    state.minions.push(createMinion('blue', 2, MID_ROW, 'B'+state.minionIdCounter));
-    state.minionIdCounter++;
-    state.minions.push(createMinion('red', 12, MID_ROW, 'R'+state.minionIdCounter));
+    const blueSpot = findEmptyNear(2, MID_ROW);
+    if (blueSpot) {
+      state.minionIdCounter++;
+      state.minions.push(createMinion('blue', blueSpot.x, blueSpot.y, 'B'+state.minionIdCounter));
+    }
+    const redSpot = findEmptyNear(12, MID_ROW);
+    if (redSpot) {
+      state.minionIdCounter++;
+      state.minions.push(createMinion('red', redSpot.x, redSpot.y, 'R'+state.minionIdCounter));
+    }
     log('🏰 미니언 생성!', 'log-info');
   }
 }
@@ -341,7 +373,13 @@ function executeSkill(caster, key, target) {
     spawnParticles(25, caster.team==='blue'?'#8844ff':'#ff4488');
     log(`🔥🧸 ${cl} 소환: 티버!! → ${tl}${target.name||target.type} ${dmg}`,'log-ult');
     if (!caster.tibbers) {
-      const tib={type:'tibbers',team:caster.team,x:target.x,y:target.y,hp:300,maxHp:300,ad:40,alive:true,armor:0,mr:0};
+      // Find empty cell near target for tibbers
+      let tx=target.x, ty=target.y;
+      if(isOccupied(tx,ty,null)){
+        const dirs=[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+        for(const[ddx,ddy] of dirs){if(canMoveTo(tx+ddx,ty+ddy,null)){tx+=ddx;ty+=ddy;break;}}
+      }
+      const tib={type:'tibbers',team:caster.team,x:tx,y:ty,hp:300,maxHp:300,ad:40,alive:true,armor:0,mr:0};
       caster.tibbers=tib; state.tibbersList.push(tib);
     }
   } else {
@@ -400,9 +438,7 @@ function tgtLabel(t) {
 // ============ PLAYER ACTIONS ============
 function playerMove(dx, dy) {
   const nx=state.player.x+dx, ny=state.player.y+dy;
-  if(!isWalkable(nx,ny)) return;
-  // Check collision with towers
-  for(const tw of state.towers) if(tw.alive&&tw.x===nx&&tw.y===ny) return;
+  if(!canMoveTo(nx,ny,state.player)) return;
   state.player.x=nx; state.player.y=ny;
   state.moveMode=false;
   log(`🔵 이동 → (${nx},${ny})`,'log-info');
@@ -499,9 +535,8 @@ function aiTurn() {
   // Move toward player or center
   const tx=p.alive?p.x:7, ty=p.alive?p.y:MID_ROW;
   const dx=Math.sign(tx-ai.x), dy=Math.sign(ty-ai.y);
-  // Try horizontal first, then vertical
-  if(dx!==0&&isWalkable(ai.x+dx,ai.y)){ai.x+=dx;log(`🔴 이동 → (${ai.x},${ai.y})`,'log-info');return;}
-  if(dy!==0&&isWalkable(ai.x,ai.y+dy)){ai.y+=dy;log(`🔴 이동 → (${ai.x},${ai.y})`,'log-info');}
+  if(dx!==0&&canMoveTo(ai.x+dx,ai.y,ai)){ai.x+=dx;log(`🔴 이동 → (${ai.x},${ai.y})`,'log-info');return;}
+  if(dy!==0&&canMoveTo(ai.x,ai.y+dy,ai)){ai.y+=dy;log(`🔴 이동 → (${ai.x},${ai.y})`,'log-info');}
 }
 
 function minionTurns() {
@@ -529,8 +564,8 @@ function minionTurns() {
     } else if(closest){
       // Move toward closest enemy along lane
       const dx=Math.sign(closest.x-m.x), dy=Math.sign(closest.y-m.y);
-      if(dx!==0&&isWalkable(m.x+dx,m.y)){m.x+=dx;}
-      else if(dy!==0&&isWalkable(m.x,m.y+dy)){m.y+=dy;}
+      if(dx!==0&&canMoveTo(m.x+dx,m.y,m)){m.x+=dx;}
+      else if(dy!==0&&canMoveTo(m.x,m.y+dy,m)){m.y+=dy;}
     }
   }
 }
@@ -560,7 +595,7 @@ function tibbersAI() {
     let closest=null,cd=999;
     for(const e of enemies){const d=dist({x:tib.x,y:tib.y},{x:e.x,y:e.y});if(d<cd){cd=d;closest=e;}}
     if(closest&&cd<=1){const dmg=calcDmg(tib.ad,'physical',closest);applyDmg(closest,dmg);log(`🧸 티버 → ${closest.name||closest.type} ${dmg}`,'log-dmg');}
-    else if(closest){const dx=Math.sign(closest.x-tib.x),dy=Math.sign(closest.y-tib.y);if(dx!==0&&isWalkable(tib.x+dx,tib.y))tib.x+=dx;else if(dy!==0&&isWalkable(tib.x,tib.y+dy))tib.y+=dy;}
+    else if(closest){const dx=Math.sign(closest.x-tib.x),dy=Math.sign(closest.y-tib.y);if(dx!==0&&canMoveTo(tib.x+dx,tib.y,tib))tib.x+=dx;else if(dy!==0&&canMoveTo(tib.x,tib.y+dy,tib))tib.y+=dy;}
   }
 }
 
@@ -595,11 +630,7 @@ function renderMap() {
     const dirs = [[0,-1],[0,1],[-1,0],[1,0]];
     for(const [dx,dy] of dirs) {
       const nx=state.player.x+dx, ny=state.player.y+dy;
-      if(isWalkable(nx,ny)) {
-        let blocked=false;
-        for(const tw of state.towers) if(tw.alive&&tw.x===nx&&tw.y===ny) blocked=true;
-        if(!blocked) moveCells.add(nx+','+ny);
-      }
+      if(canMoveTo(nx,ny,state.player)) moveCells.add(nx+','+ny);
     }
   }
 

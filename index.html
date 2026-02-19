@@ -142,14 +142,62 @@ const MINION_HP = 300, MINION_DMG = 15, MINION_GOLD = 20, MINION_SPAWN_INTERVAL 
 
 const ANNIE = {
   name:'Annie', hp:560, mp:418, ad:50, ap:0, armor:19, mr:30,
+  // Per-level growth
+  hpPerLvl: 88, mpPerLvl: 25, adPerLvl: 2.7, apPerLvl: 0, armorPerLvl: 4, mrPerLvl: 1.3,
   skills: {
     passive: { name:'파이로매니아', stacksNeeded:4 },
-    q: { name:'붕괴', key:'Q', damage:80, manaCost:60, cooldown:0, range:3, type:'target' },
-    w: { name:'소각', key:'W', damage:70, manaCost:70, cooldown:1, range:2, type:'target' },
-    e: { name:'보호막', key:'E', shield:40, shieldApRatio:0.4, manaCost:40, cooldown:3, type:'self' },
-    r: { name:'티버', key:'R', damage:150, manaCost:100, cooldown:8, range:3, type:'target', summon:true }
+    q: { name:'붕괴', key:'Q', baseDmg:[80,115,150,185,220], manaCost:60, cooldown:0, range:3, type:'target' },
+    w: { name:'소각', key:'W', baseDmg:[70,115,160,205,250], manaCost:70, cooldown:1, range:2, type:'target' },
+    e: { name:'보호막', key:'E', baseShield:[40,65,90,115,140], shieldApRatio:0.4, manaCost:40, cooldown:3, type:'self' },
+    r: { name:'티버', key:'R', baseDmg:[150,275,400], manaCost:100, cooldown:8, range:3, type:'target', summon:true }
   }
 };
+
+// Level/XP config
+const MAX_LEVEL = 18;
+const XP_PER_LEVEL = [0,280,380,480,580,680,780,880,980,1080,1180,1280,1380,1480,1580,1680,1780,1880]; // cumulative XP needed
+const MINION_XP = 60;
+const CHAMPION_KILL_XP = 200;
+// Skill points: Q/W unlock at 1, can level up skills. Simplified: auto-level Q>W>E>R at levels
+// Skill levels: max 5 for Q/W/E, max 3 for R. R available at 6,11,16
+function getSkillLevel(champ, key) {
+  const lvl = champ.level;
+  if (key === 'r') {
+    if (lvl >= 16) return 3;
+    if (lvl >= 11) return 2;
+    if (lvl >= 6) return 1;
+    return 0;
+  }
+  // Simple auto-level: distribute points among Q>W>E
+  // Available skill points = level - (R levels)
+  const rLvl = lvl>=16?3:lvl>=11?2:lvl>=6?1:0;
+  let pts = lvl - rLvl;
+  // Q gets priority, then W, then E
+  if (key === 'q') return Math.min(5, Math.ceil(pts / 3 * 1.5));
+  if (key === 'w') return Math.min(5, Math.ceil((pts - Math.min(5, Math.ceil(pts/3*1.5))) / 2));
+  // Simplified: just spread evenly-ish
+  const qLvl = Math.min(5, Math.ceil(pts * 0.5));
+  const wLvl = Math.min(5, Math.ceil((pts - qLvl) * 0.6));
+  return Math.min(5, Math.max(1, pts - qLvl - wLvl));
+}
+// Even simpler: use a fixed skill order like LoL Annie typically levels
+const SKILL_ORDER = ['q','w','q','e','q','r','w','w','q','w','e','r','q','w','e','r','e','e'];
+function getSkillLevels(champLevel) {
+  const levels = {q:0,w:0,e:0,r:0};
+  for (let i = 0; i < Math.min(champLevel, SKILL_ORDER.length); i++) {
+    levels[SKILL_ORDER[i]]++;
+  }
+  return levels;
+}
+function getSkillDamage(key, skillLvl) {
+  const s = ANNIE.skills[key];
+  if (!s.baseDmg) return 0;
+  return s.baseDmg[Math.max(0, Math.min(skillLvl - 1, s.baseDmg.length - 1))] || 0;
+}
+function getSkillShield(skillLvl) {
+  const s = ANNIE.skills.e;
+  return s.baseShield[Math.max(0, Math.min(skillLvl - 1, s.baseShield.length - 1))] || 0;
+}
 
 // ============ UTIL ============
 function dist(a, b) { return Math.abs(a.x-b.x)+Math.abs(a.y-b.y); } // Manhattan
@@ -159,7 +207,36 @@ function isWalkable(x, y) { return x>=0 && x<COLS && y>=0 && y<ROWS && MAP_TEMPL
 let state;
 
 function createChamp(t, team, x, y) {
-  return { type:'champion', team, name:t.name, x, y, maxHp:t.hp, hp:t.hp, maxMp:t.mp, mp:t.mp, ad:t.ad, ap:t.ap, armor:t.armor, mr:t.mr, passiveStacks:0, shield:0, cooldowns:{q:0,w:0,e:0,r:0}, tibbers:null, gold:0, alive:true, stunned:false };
+  const c = { type:'champion', team, name:t.name, x, y, baseHp:t.hp, baseMp:t.mp, baseAd:t.ad, baseAp:t.ap, baseArmor:t.armor, baseMr:t.mr,
+    maxHp:t.hp, hp:t.hp, maxMp:t.mp, mp:t.mp, ad:t.ad, ap:t.ap, armor:t.armor, mr:t.mr,
+    level:1, xp:0, skillLevels:{q:1,w:0,e:0,r:0},
+    passiveStacks:0, shield:0, cooldowns:{q:0,w:0,e:0,r:0}, tibbers:null, gold:0, alive:true, stunned:false };
+  recalcStats(c);
+  return c;
+}
+function recalcStats(c) {
+  const lvl = c.level;
+  c.maxHp = Math.floor(c.baseHp + ANNIE.hpPerLvl * (lvl - 1));
+  c.maxMp = Math.floor(c.baseMp + ANNIE.mpPerLvl * (lvl - 1));
+  c.ad = Math.floor(c.baseAd + ANNIE.adPerLvl * (lvl - 1));
+  c.armor = Math.floor(c.baseArmor + ANNIE.armorPerLvl * (lvl - 1));
+  c.mr = Math.floor(c.baseMr + ANNIE.mrPerLvl * (lvl - 1));
+  c.skillLevels = getSkillLevels(lvl);
+}
+function grantXP(champ, amount) {
+  if (champ.level >= MAX_LEVEL) return;
+  champ.xp += amount;
+  while (champ.level < MAX_LEVEL && champ.xp >= XP_PER_LEVEL[champ.level]) {
+    champ.xp -= XP_PER_LEVEL[champ.level];
+    champ.level++;
+    const oldMaxHp = champ.maxHp, oldMaxMp = champ.maxMp;
+    recalcStats(champ);
+    // Heal the HP/MP gained from level up
+    champ.hp += champ.maxHp - oldMaxHp;
+    champ.mp += champ.maxMp - oldMaxMp;
+    const cl = champ.team==='blue'?'🔵':'🔴';
+    log(`⬆️ ${cl} ${champ.name} 레벨 업! Lv.${champ.level}`,'log-heal');
+  }
 }
 function createTower(team, x, y) { return { type:'tower', team, x, y, hp:TOWER_HP, maxHp:TOWER_HP, alive:true, ad:TOWER_DMG, range:TOWER_RANGE, armor:0, mr:0 }; }
 function createMinion(team, x, y, id) { return { type:'minion', team, x, y, hp:MINION_HP, maxHp:MINION_HP, ad:MINION_DMG, alive:true, id, armor:0, mr:0 }; }
@@ -229,8 +306,12 @@ function executeSkill(caster, key, target) {
   if (caster.passiveStacks >= ANNIE.skills.passive.stacksNeeded) { willStun=true; caster.passiveStacks=0; }
   const cl = caster.team==='blue'?'🔵':'🔴';
 
+  const sLvl = caster.skillLevels[key] || 0;
+  if (sLvl <= 0) return false;
+
   if (key==='e') {
-    const s=Math.floor(skill.shield+skill.shieldApRatio*caster.ap);
+    const base = getSkillShield(sLvl);
+    const s=Math.floor(base+skill.shieldApRatio*caster.ap);
     caster.shield+=s;
     log(`${cl} ${caster.name} E 보호막 +${s}`,'log-info');
     return true;
@@ -239,7 +320,7 @@ function executeSkill(caster, key, target) {
   const d = dist({x:caster.x,y:caster.y},{x:target.x,y:target.y});
   if (d > skill.range) return false;
 
-  const raw = skill.damage + caster.ap;
+  const raw = getSkillDamage(key, sLvl) + caster.ap;
   const dmg = calcDmg(raw,'magic',target);
   applyDmg(target,dmg);
   const tl = target.team==='blue'?'🔵':'🔴';
@@ -264,8 +345,15 @@ function executeSkill(caster, key, target) {
 
 function handleKill(killer, victim) {
   const kl=killer.team==='blue'?'🔵':'🔴';
-  if(victim.type==='minion'){killer.gold+=MINION_GOLD;log(`${kl} 미니언 처치 +${MINION_GOLD}G`,'log-kill');}
-  else if(victim.type==='champion'){killer.gold+=300;log(`${kl} 챔피언 처치! +300G`,'log-kill');}
+  if(victim.type==='minion'){
+    killer.gold+=MINION_GOLD;
+    if(killer.type==='champion') grantXP(killer, MINION_XP);
+    log(`${kl} 미니언 처치 +${MINION_GOLD}G +${MINION_XP}XP`,'log-kill');
+  } else if(victim.type==='champion'){
+    killer.gold+=300;
+    if(killer.type==='champion') grantXP(killer, CHAMPION_KILL_XP);
+    log(`${kl} 챔피언 처치! +300G +${CHAMPION_KILL_XP}XP`,'log-kill');
+  }
 }
 
 function autoAttack(atk, tgt) {
@@ -328,6 +416,7 @@ function playerAA() {
 
 function playerSkill(key) {
   const p=state.player, s=ANNIE.skills[key];
+  if(p.skillLevels[key]<=0)return;
   if(p.cooldowns[key]>0)return;
   if(p.mp<s.manaCost){log('⚠️ 마나 부족!','log-info');render();return;}
   if(s.type==='self'){executeSkill(p,key,null);endPlayerTurn();}
@@ -383,15 +472,15 @@ function aiTurn() {
   if(ai.stunned){log('🔴 스턴! 턴 스킵','log-info');return;}
   const p=state.player;
 
-  if(ai.cooldowns.r===0&&ai.mp>=100&&p.alive&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){executeSkill(ai,'r',p);return;}
-  if(ai.cooldowns.q===0&&ai.mp>=60){
+  if(ai.skillLevels.r>0&&ai.cooldowns.r===0&&ai.mp>=100&&p.alive&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){executeSkill(ai,'r',p);return;}
+  if(ai.skillLevels.q>0&&ai.cooldowns.q===0&&ai.mp>=60){
     const ms=state.minions.filter(m=>m.alive&&m.team==='blue'&&dist({x:ai.x,y:ai.y},{x:m.x,y:m.y})<=3);
     const lh=ms.find(m=>m.hp<=80);
     if(lh){executeSkill(ai,'q',lh);return;}
     if(p.alive&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){executeSkill(ai,'q',p);return;}
   }
-  if(ai.cooldowns.w===0&&ai.mp>=70){const ts=getInRange(ai,2);if(ts.length){executeSkill(ai,'w',ts[0]);return;}}
-  if(ai.cooldowns.e===0&&ai.shield===0&&ai.mp>=40){executeSkill(ai,'e',null);return;}
+  if(ai.skillLevels.w>0&&ai.cooldowns.w===0&&ai.mp>=70){const ts=getInRange(ai,2);if(ts.length){executeSkill(ai,'w',ts[0]);return;}}
+  if(ai.skillLevels.e>0&&ai.cooldowns.e===0&&ai.shield===0&&ai.mp>=40){executeSkill(ai,'e',null);return;}
 
   const aa=getInRange(ai,2);
   if(aa.length){const lm=aa.find(t=>t.type==='minion'&&t.hp<=ai.ad);autoAttack(ai,lm||aa.find(t=>t.type==='champion')||aa[0]);return;}
@@ -416,7 +505,16 @@ function minionTurns() {
     for(const e of enemies){const d=dist({x:m.x,y:m.y},{x:e.x,y:e.y});if(d<cd){cd=d;closest=e;}}
     if(closest&&cd<=1){
       const dmg=calcDmg(m.ad,'physical',closest);applyDmg(closest,dmg);
-      if(!closest.alive&&closest.type==='champion')log('💀 미니언이 챔피언 처치!','log-kill');
+      if(!closest.alive){
+        if(closest.type==='champion') log('💀 미니언이 챔피언 처치!','log-kill');
+        // Grant XP to nearby champion (within 4 tiles) if minion died
+        if(closest.type==='minion'){
+          const nearBlue=dist({x:state.player.x,y:state.player.y},{x:closest.x,y:closest.y})<=4;
+          const nearRed=dist({x:state.enemy.x,y:state.enemy.y},{x:closest.x,y:closest.y})<=4;
+          if(nearBlue&&closest.team==='red') grantXP(state.player, Math.floor(MINION_XP*0.6));
+          if(nearRed&&closest.team==='blue') grantXP(state.enemy, Math.floor(MINION_XP*0.6));
+        }
+      }
     } else if(closest){
       // Move toward closest enemy along lane
       const dx=Math.sign(closest.x-m.x), dy=Math.sign(closest.y-m.y);
@@ -534,11 +632,14 @@ function renderStats() {
     const needed=ANNIE.skills.passive.stacksNeeded;
     let stacks='';
     for(let i=0;i<needed;i++){const c=i<champ.passiveStacks?(champ.passiveStacks>=needed-1?'stack ready':'stack filled'):'stack';stacks+=`<span class="${c}"></span>`;}
-    const badges=['q','w','e','r'].map(k=>{const s=ANNIE.skills[k];const cd=champ.cooldowns[k];if(cd>0)return`<span class="skill-badge on-cd">${s.key}(${cd})</span>`;if(champ.mp<s.manaCost)return`<span class="skill-badge on-cd">${s.key}</span>`;return`<span class="skill-badge ready">${s.key}</span>`;}).join('');
+    const xpNeeded = champ.level<MAX_LEVEL ? XP_PER_LEVEL[champ.level] : 0;
+    const xpPct = xpNeeded>0 ? Math.floor((champ.xp/xpNeeded)*100) : 100;
+    const badges=['q','w','e','r'].map(k=>{const s=ANNIE.skills[k];const sl=champ.skillLevels[k];const cd=champ.cooldowns[k];if(sl<=0)return`<span class="skill-badge on-cd">${s.key}(-)</span>`;if(cd>0)return`<span class="skill-badge on-cd">${s.key}${sl}(${cd})</span>`;if(champ.mp<s.manaCost)return`<span class="skill-badge on-cd">${s.key}${sl}</span>`;return`<span class="skill-badge ready">${s.key}${sl}</span>`;}).join('');
     document.getElementById(id).innerHTML=`
-      <h3>${label}</h3>
+      <h3>${label} <span style="color:#f0c040;font-size:11px">Lv.${champ.level}</span></h3>
       <div class="bar-container bar-hp"><div class="bar-fill" style="width:${hpPct}%"></div><div class="bar-label">❤️ ${champ.hp}/${champ.maxHp}${champ.shield>0?' 🛡️'+champ.shield:''}</div></div>
       <div class="bar-container bar-mp"><div class="bar-fill" style="width:${mpPct}%"></div><div class="bar-label">💧 ${champ.mp}/${champ.maxMp}</div></div>
+      <div class="bar-container" style="height:10px;margin-bottom:4px"><div class="bar-fill" style="width:${xpPct}%;background:linear-gradient(90deg,#8844aa,#cc66ff)"></div><div class="bar-label" style="font-size:8px">⭐ ${champ.level<MAX_LEVEL?champ.xp+'/'+xpNeeded:'MAX'}</div></div>
       <div class="passive-bar">🔥 ${stacks}</div>
       <div class="skill-row">${badges}</div>
       ${champ.stunned?'<div style="color:#ff44ff;margin-top:3px;font-size:11px">⚡ 스턴!</div>':''}
@@ -560,7 +661,7 @@ function renderActions() {
     return;
   }
 
-  const can=k=>p.cooldowns[k]===0&&p.mp>=ANNIE.skills[k].manaCost;
+  const can=k=>p.skillLevels[k]>0&&p.cooldowns[k]===0&&p.mp>=ANNIE.skills[k].manaCost;
   el.innerHTML=`
     <button class="move" onclick="enterMoveMode()">🚶 이동</button>
     <button class="attack" onclick="playerAA()">⚔️ 평타</button>

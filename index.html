@@ -7,46 +7,61 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #0a0a1a; color: #e0e0e0; font-family: 'Courier New', monospace; font-size: 14px; overflow-x: hidden; }
-#game { max-width: 900px; margin: 0 auto; padding: 20px; position: relative; }
-h1 { text-align: center; color: #f0c040; margin-bottom: 4px; font-size: 24px; }
-.subtitle { text-align: center; color: #888; margin-bottom: 20px; font-size: 12px; }
+#game { max-width: 960px; margin: 0 auto; padding: 16px; position: relative; }
+h1 { text-align: center; color: #f0c040; margin-bottom: 2px; font-size: 22px; }
+.subtitle { text-align: center; color: #888; margin-bottom: 12px; font-size: 11px; }
 
-/* Lane display */
-#lane-display { background: #111; border: 1px solid #333; padding: 15px; margin-bottom: 15px; border-radius: 4px; white-space: pre; line-height: 1.6; font-size: 13px; overflow-x: auto; }
+/* Grid map */
+#map { display: flex; justify-content: center; margin-bottom: 12px; }
+#map table { border-collapse: collapse; }
+#map td {
+  width: 52px; height: 52px; border: 1px solid #222; text-align: center; vertical-align: middle;
+  font-size: 18px; position: relative; background: #0d0d0d; cursor: default;
+  transition: background 0.15s;
+}
+#map td.lane { background: #111a11; border-color: #1a2a1a; }
+#map td.grass { background: #0a1a0a; border-color: #1a2a1a; }
+#map td.wall { background: #1a1a1a; border-color: #222; }
+#map td.tower-blue { background: #0a0a2a; border-color: #224; }
+#map td.tower-red { background: #2a0a0a; border-color: #422; }
+#map td.highlight { background: #333300 !important; border-color: #555500; cursor: pointer; }
+#map td .unit { display: block; line-height: 1.2; }
+#map td .sub { font-size: 9px; display: block; color: #aaa; }
+#map td .hp-mini { font-size: 8px; color: #4f4; }
 
-/* Stats - simplified */
-.stats-row { display: flex; gap: 10px; margin-bottom: 15px; }
-.stat-panel { flex: 1; background: #111; border: 1px solid #333; padding: 12px; border-radius: 4px; }
+/* Stats */
+.stats-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.stat-panel { flex: 1; background: #111; border: 1px solid #333; padding: 10px; border-radius: 4px; }
 .stat-panel.player { border-color: #4488ff; }
 .stat-panel.enemy { border-color: #ff4444; }
-.stat-panel h3 { margin-bottom: 8px; font-size: 14px; }
-.bar-container { background: #222; border-radius: 3px; height: 20px; position: relative; margin-bottom: 6px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+.stat-panel h3 { margin-bottom: 6px; font-size: 13px; }
+.bar-container { background: #222; border-radius: 3px; height: 18px; position: relative; margin-bottom: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
 .bar-hp .bar-fill { background: linear-gradient(90deg, #22aa22, #44ff44); }
 .bar-mp .bar-fill { background: linear-gradient(90deg, #2244aa, #4488ff); }
-.bar-label { position: absolute; top: 0; left: 0; right: 0; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; text-shadow: 1px 1px 2px #000; }
-.passive-bar { font-size: 12px; margin-top: 4px; }
-.passive-bar .stack { display: inline-block; width: 14px; height: 14px; border: 1px solid #666; border-radius: 2px; margin-right: 2px; }
+.bar-label { position: absolute; top: 0; left: 0; right: 0; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; text-shadow: 1px 1px 2px #000; }
+.passive-bar { font-size: 11px; margin-top: 3px; }
+.passive-bar .stack { display: inline-block; width: 12px; height: 12px; border: 1px solid #666; border-radius: 2px; margin-right: 2px; }
 .passive-bar .stack.filled { background: #ff6600; border-color: #ff8800; }
 .passive-bar .stack.ready { background: #ff00ff; border-color: #ff44ff; animation: pulse 0.5s infinite alternate; }
-.skill-row { display: flex; gap: 6px; margin-top: 6px; }
-.skill-badge { font-size: 11px; padding: 2px 6px; border-radius: 3px; background: #1a1a1a; border: 1px solid #444; }
+.skill-row { display: flex; gap: 4px; margin-top: 4px; }
+.skill-badge { font-size: 10px; padding: 2px 5px; border-radius: 3px; background: #1a1a1a; border: 1px solid #444; }
 .skill-badge.on-cd { opacity: 0.35; }
 .skill-badge.ready { border-color: #44ff44; color: #44ff44; }
 
 /* Log */
-#log { background: #0a0a0a; border: 1px solid #333; padding: 10px; height: 180px; overflow-y: auto; margin-bottom: 15px; border-radius: 4px; font-size: 12px; line-height: 1.6; }
+#log { background: #0a0a0a; border: 1px solid #333; padding: 8px; height: 150px; overflow-y: auto; margin-bottom: 10px; border-radius: 4px; font-size: 11px; line-height: 1.5; }
 .log-turn { color: #f0c040; font-weight: bold; }
 .log-dmg { color: #ff6644; }
 .log-heal { color: #44ff44; }
 .log-info { color: #88aaff; }
 .log-kill { color: #ff44ff; }
-.log-ult { color: #ff00ff; font-weight: bold; font-size: 13px; }
+.log-ult { color: #ff00ff; font-weight: bold; }
 
 /* Actions */
-#actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
-#actions button { background: #222; color: #e0e0e0; border: 1px solid #555; padding: 8px 16px; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 13px; transition: all 0.15s; }
-#actions button:hover:not(:disabled) { background: #333; border-color: #aaa; transform: scale(1.03); }
+#actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+#actions button { background: #222; color: #e0e0e0; border: 1px solid #555; padding: 7px 14px; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 12px; transition: all 0.15s; }
+#actions button:hover:not(:disabled) { background: #333; border-color: #aaa; }
 #actions button:disabled { opacity: 0.3; cursor: not-allowed; }
 #actions button.move { border-color: #44aa44; }
 #actions button.attack { border-color: #ff6644; }
@@ -54,100 +69,43 @@ h1 { text-align: center; color: #f0c040; margin-bottom: 4px; font-size: 24px; }
 #actions button.skill-w { border-color: #ff4444; }
 #actions button.skill-e { border-color: #44aaff; }
 #actions button.skill-r { border-color: #ff00ff; background: #1a0020; }
-#actions button.skill-r:hover:not(:disabled) { background: #2a0040; border-color: #ff44ff; box-shadow: 0 0 12px #ff00ff55; }
+#actions button.skill-r:hover:not(:disabled) { background: #2a0040; box-shadow: 0 0 10px #ff00ff44; }
 
-/* Target selection */
-#target-select { background: #1a1a0a; border: 1px solid #f0c040; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: none; }
-#target-select h4 { color: #f0c040; margin-bottom: 8px; }
-#target-select button { background: #222; color: #e0e0e0; border: 1px solid #555; padding: 6px 12px; margin: 3px; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 12px; }
+/* Target select */
+#target-select { background: #1a1a0a; border: 1px solid #f0c040; padding: 8px; margin-bottom: 10px; border-radius: 4px; display: none; }
+#target-select h4 { color: #f0c040; margin-bottom: 6px; font-size: 12px; }
+#target-select button { background: #222; color: #e0e0e0; border: 1px solid #555; padding: 5px 10px; margin: 2px; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 11px; }
 #target-select button:hover { background: #333; }
 
-/* ====== SCREEN EFFECTS ====== */
-
-/* Ult flash overlay */
+/* Effects */
 #ult-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 100; opacity: 0; transition: opacity 0.15s; }
 #ult-overlay.flash { opacity: 1; }
+@keyframes shake { 0%,100%{transform:translate(0,0)}10%{transform:translate(-6px,3px)}30%{transform:translate(4px,-4px)}50%{transform:translate(-3px,5px)}70%{transform:translate(5px,-2px)}90%{transform:translate(-4px,2px)} }
+.screen-shake { animation: shake 0.4s ease; }
+@keyframes pulse { from{opacity:0.6}to{opacity:1} }
 
-/* Screen shake */
-@keyframes shake {
-  0%,100% { transform: translate(0,0); }
-  10% { transform: translate(-8px, 4px); }
-  20% { transform: translate(6px, -6px); }
-  30% { transform: translate(-4px, 2px); }
-  40% { transform: translate(4px, -4px); }
-  50% { transform: translate(-2px, 6px); }
-  60% { transform: translate(6px, -2px); }
-  70% { transform: translate(-6px, 4px); }
-  80% { transform: translate(2px, -4px); }
-  90% { transform: translate(-4px, 2px); }
-}
-.screen-shake { animation: shake 0.5s ease; }
-
-/* Pulse animation */
-@keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
-
-/* ====== GAME OVER OVERLAY ====== */
-#game-over-overlay {
-  display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  z-index: 200; justify-content: center; align-items: center; flex-direction: column;
-}
-#game-over-overlay.show { display: flex; }
+/* Game over */
+#game-over-overlay { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:200; justify-content:center; align-items:center; flex-direction:column; }
+#game-over-overlay.show { display:flex; }
 #game-over-overlay.victory { background: radial-gradient(ellipse at center, rgba(255,200,0,0.3) 0%, rgba(0,0,0,0.9) 70%); }
 #game-over-overlay.defeat { background: radial-gradient(ellipse at center, rgba(255,0,0,0.2) 0%, rgba(0,0,0,0.95) 70%); }
+#game-over-text { font-size: 56px; font-weight: bold; letter-spacing: 8px; margin-bottom: 16px; animation: resultAppear 0.8s ease-out; }
+#game-over-overlay.victory #game-over-text { color: #f0c040; text-shadow: 0 0 30px #f0c040, 0 0 60px #ff8800; }
+#game-over-overlay.defeat #game-over-text { color: #ff2222; text-shadow: 0 0 30px #ff0000, 0 0 60px #880000; }
+#game-over-sub { font-size: 14px; color: #aaa; margin-bottom: 24px; animation: resultAppear 1s ease-out; }
+#game-over-overlay button { background:none; border:2px solid #888; color:#e0e0e0; padding:10px 36px; font-size:16px; cursor:pointer; border-radius:4px; font-family:inherit; animation: resultAppear 1.2s ease-out; }
+#game-over-overlay button:hover { border-color:#f0c040; color:#f0c040; }
+@keyframes resultAppear { 0%{opacity:0;transform:scale(0.5) translateY(20px)}100%{opacity:1;transform:scale(1) translateY(0)} }
 
-#game-over-text {
-  font-size: 60px; font-weight: bold; text-transform: uppercase;
-  letter-spacing: 8px; margin-bottom: 20px;
-  animation: resultAppear 0.8s ease-out;
-}
-#game-over-overlay.victory #game-over-text {
-  color: #f0c040;
-  text-shadow: 0 0 30px #f0c040, 0 0 60px #ff8800, 0 0 100px #f0c04088;
-}
-#game-over-overlay.defeat #game-over-text {
-  color: #ff2222;
-  text-shadow: 0 0 30px #ff0000, 0 0 60px #880000;
-}
-#game-over-sub { font-size: 16px; color: #aaa; margin-bottom: 30px; animation: resultAppear 1s ease-out; }
-#game-over-overlay button {
-  background: none; border: 2px solid #888; color: #e0e0e0; padding: 12px 40px;
-  font-size: 18px; cursor: pointer; border-radius: 4px; font-family: inherit;
-  transition: all 0.2s; animation: resultAppear 1.2s ease-out;
-}
-#game-over-overlay button:hover { border-color: #f0c040; color: #f0c040; }
-
-@keyframes resultAppear {
-  0% { opacity: 0; transform: scale(0.5) translateY(20px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-/* Floating damage numbers */
-.float-text {
-  position: fixed; pointer-events: none; z-index: 50;
-  font-weight: bold; font-family: 'Courier New', monospace;
-  animation: floatUp 1s ease-out forwards;
-}
-@keyframes floatUp {
-  0% { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-60px) scale(1.3); }
-}
-
-/* Particles for ult */
-.particle {
-  position: fixed; pointer-events: none; z-index: 90;
-  border-radius: 50%; animation: particleFly 1s ease-out forwards;
-}
-@keyframes particleFly {
-  0% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0) translateY(-100px); }
-}
+.particle { position:fixed; pointer-events:none; z-index:90; border-radius:50%; animation: particleFly 1s ease-out forwards; }
+@keyframes particleFly { 0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(0) translateY(-100px)} }
 </style>
 </head>
 <body>
 <div id="game">
   <h1>⚔️ ib-lol ⚔️</h1>
   <div class="subtitle">턴제 1v1 라인전 — Annie Mirror Match</div>
-  <div id="lane-display"></div>
+  <div id="map"></div>
   <div class="stats-row">
     <div class="stat-panel player" id="player-stats"></div>
     <div class="stat-panel enemy" id="enemy-stats"></div>
@@ -162,35 +120,62 @@ h1 { text-align: center; color: #f0c040; margin-bottom: 4px; font-size: 24px; }
   <div id="game-over-sub"></div>
   <button onclick="restartGame()">다시 하기</button>
 </div>
+
 <script>
 // ============ CONFIG ============
-const LANE_SIZE = 13;
+const COLS = 15, ROWS = 7;
+const MID_ROW = 3; // lane row (0-indexed)
+
+// Map layout: 0=wall, 1=lane, 2=grass
+const MAP_TEMPLATE = [
+  [0,0,0,2,2,2,2,0,2,2,2,2,0,0,0],
+  [0,0,2,2,1,1,1,1,1,1,1,2,2,0,0],
+  [0,2,2,1,1,1,1,1,1,1,1,1,2,2,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+  [0,2,2,1,1,1,1,1,1,1,1,1,2,2,0],
+  [0,0,2,2,1,1,1,1,1,1,1,2,2,0,0],
+  [0,0,0,2,2,2,2,0,2,2,2,2,0,0,0],
+];
+
 const TOWER_HP = 1500, TOWER_DMG = 80, TOWER_RANGE = 2;
 const MINION_HP = 300, MINION_DMG = 15, MINION_GOLD = 20, MINION_SPAWN_INTERVAL = 3;
 
 const ANNIE = {
-  name: 'Annie', hp: 560, mp: 418, ad: 50, ap: 0, armor: 19, mr: 30,
+  name:'Annie', hp:560, mp:418, ad:50, ap:0, armor:19, mr:30,
   skills: {
-    passive: { name: '파이로매니아', stacksNeeded: 4 },
-    q: { name: '붕괴', key: 'Q', damage: 80, manaCost: 60, cooldown: 0, range: 3, type: 'target' },
-    w: { name: '소각', key: 'W', damage: 70, manaCost: 70, cooldown: 1, range: 2, type: 'direction' },
-    e: { name: '보호막', key: 'E', shield: 40, shieldApRatio: 0.4, manaCost: 40, cooldown: 3, type: 'self' },
-    r: { name: '티버', key: 'R', damage: 150, manaCost: 100, cooldown: 8, range: 3, type: 'target', summon: true }
+    passive: { name:'파이로매니아', stacksNeeded:4 },
+    q: { name:'붕괴', key:'Q', damage:80, manaCost:60, cooldown:0, range:3, type:'target' },
+    w: { name:'소각', key:'W', damage:70, manaCost:70, cooldown:1, range:2, type:'target' },
+    e: { name:'보호막', key:'E', shield:40, shieldApRatio:0.4, manaCost:40, cooldown:3, type:'self' },
+    r: { name:'티버', key:'R', damage:150, manaCost:100, cooldown:8, range:3, type:'target', summon:true }
   }
 };
+
+// ============ UTIL ============
+function dist(a, b) { return Math.abs(a.x-b.x)+Math.abs(a.y-b.y); } // Manhattan
+function isWalkable(x, y) { return x>=0 && x<COLS && y>=0 && y<ROWS && MAP_TEMPLATE[y][x] !== 0; }
 
 // ============ STATE ============
 let state;
 
-function createChampion(t, team, pos) {
-  return { type:'champion', team, name:t.name, pos, maxHp:t.hp, hp:t.hp, maxMp:t.mp, mp:t.mp, ad:t.ad, ap:t.ap, armor:t.armor, mr:t.mr, passiveStacks:0, shield:0, cooldowns:{q:0,w:0,e:0,r:0}, tibbers:null, gold:0, alive:true, stunned:false };
+function createChamp(t, team, x, y) {
+  return { type:'champion', team, name:t.name, x, y, maxHp:t.hp, hp:t.hp, maxMp:t.mp, mp:t.mp, ad:t.ad, ap:t.ap, armor:t.armor, mr:t.mr, passiveStacks:0, shield:0, cooldowns:{q:0,w:0,e:0,r:0}, tibbers:null, gold:0, alive:true, stunned:false };
 }
-function createTower(team, pos) { return { type:'tower', team, pos, hp:TOWER_HP, maxHp:TOWER_HP, alive:true, ad:TOWER_DMG, range:TOWER_RANGE, armor:0, mr:0 }; }
-function createMinion(team, pos, id) { return { type:'minion', team, pos, hp:MINION_HP, maxHp:MINION_HP, ad:MINION_DMG, alive:true, id, armor:0, mr:0 }; }
+function createTower(team, x, y) { return { type:'tower', team, x, y, hp:TOWER_HP, maxHp:TOWER_HP, alive:true, ad:TOWER_DMG, range:TOWER_RANGE, armor:0, mr:0 }; }
+function createMinion(team, x, y, id) { return { type:'minion', team, x, y, hp:MINION_HP, maxHp:MINION_HP, ad:MINION_DMG, alive:true, id, armor:0, mr:0 }; }
 
 function initGame() {
-  state = { turn:1, player:createChampion(ANNIE,'blue',2), enemy:createChampion(ANNIE,'red',10), towers:[createTower('blue',0),createTower('red',12)], minions:[], tibbersList:[], minionIdCounter:0, logs:[], phase:'action', gameOver:false };
+  state = {
+    turn: 1,
+    player: createChamp(ANNIE, 'blue', 3, MID_ROW),
+    enemy: createChamp(ANNIE, 'red', 11, MID_ROW),
+    towers: [createTower('blue', 1, MID_ROW), createTower('red', 13, MID_ROW)],
+    minions: [], tibbersList: [], minionIdCounter: 0,
+    logs: [], phase: 'action', gameOver: false,
+    moveMode: false
+  };
   spawnMinions();
+  log(`━━━ 턴 ${state.turn} ━━━`, 'log-turn');
   render();
 }
 function restartGame() {
@@ -198,8 +183,8 @@ function restartGame() {
   initGame();
 }
 
-function log(msg, cls='') { state.logs.push({msg,cls}); }
-function dist(a,b) { return Math.abs(a-b); }
+function log(msg, cls='') { state.logs.push({msg, cls}); }
+
 function calcDmg(raw, type, target) {
   const def = type==='magic' ? (target.mr||0) : (target.armor||0);
   return Math.max(1, Math.floor(raw * (100/(100+def))));
@@ -214,234 +199,178 @@ function applyDmg(target, amount) {
 function spawnMinions() {
   if (state.turn % MINION_SPAWN_INTERVAL === 1 || state.turn === 1) {
     state.minionIdCounter++;
-    state.minions.push(createMinion('blue',1,'B'+state.minionIdCounter));
+    state.minions.push(createMinion('blue', 2, MID_ROW, 'B'+state.minionIdCounter));
     state.minionIdCounter++;
-    state.minions.push(createMinion('red',11,'R'+state.minionIdCounter));
-    log('🏰 미니언 생성!','log-info');
+    state.minions.push(createMinion('red', 12, MID_ROW, 'R'+state.minionIdCounter));
+    log('🏰 미니언 생성!', 'log-info');
   }
 }
 
 // ============ EFFECTS ============
-function screenShake() {
-  document.getElementById('game').classList.add('screen-shake');
-  setTimeout(() => document.getElementById('game').classList.remove('screen-shake'), 500);
+function screenShake() { document.getElementById('game').classList.add('screen-shake'); setTimeout(()=>document.getElementById('game').classList.remove('screen-shake'),400); }
+function ultFlash(color) { const o=document.getElementById('ult-overlay'); o.style.background=color; o.classList.add('flash'); screenShake(); setTimeout(()=>o.classList.remove('flash'),200); }
+function spawnParticles(n, color) {
+  for(let i=0;i<n;i++){const p=document.createElement('div');p.className='particle';const s=4+Math.random()*8;p.style.width=s+'px';p.style.height=s+'px';p.style.background=color;p.style.boxShadow=`0 0 ${s}px ${color}`;p.style.left=(20+Math.random()*60)+'vw';p.style.top=(20+Math.random()*60)+'vh';document.body.appendChild(p);setTimeout(()=>p.remove(),1500);}
 }
-
-function ultFlash(color) {
-  const ov = document.getElementById('ult-overlay');
-  ov.style.background = color;
-  ov.classList.add('flash');
-  screenShake();
-  setTimeout(() => ov.classList.remove('flash'), 200);
-}
-
-function spawnParticles(count, color) {
-  for (let i = 0; i < count; i++) {
-    const p = document.createElement('div');
-    p.className = 'particle';
-    const size = 4 + Math.random() * 8;
-    p.style.width = size + 'px';
-    p.style.height = size + 'px';
-    p.style.background = color;
-    p.style.boxShadow = `0 0 ${size}px ${color}`;
-    p.style.left = (20 + Math.random() * 60) + 'vw';
-    p.style.top = (20 + Math.random() * 60) + 'vh';
-    p.style.animationDuration = (0.5 + Math.random() * 1) + 's';
-    document.body.appendChild(p);
-    setTimeout(() => p.remove(), 1500);
-  }
-}
-
-function floatText(text, color, x, y) {
-  const el = document.createElement('div');
-  el.className = 'float-text';
-  el.textContent = text;
-  el.style.color = color;
-  el.style.fontSize = (16 + Math.random() * 8) + 'px';
-  el.style.left = x + 'px';
-  el.style.top = y + 'px';
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 1000);
-}
-
 function showGameOver(victory) {
-  const overlay = document.getElementById('game-over-overlay');
-  const text = document.getElementById('game-over-text');
-  const sub = document.getElementById('game-over-sub');
-
-  if (victory) {
-    overlay.classList.add('show','victory');
-    text.textContent = 'VICTORY';
-    const rt = state.towers.find(t=>t.team==='red');
-    sub.textContent = !state.enemy.alive ? '적 챔피언을 처치했습니다!' : '적 타워를 파괴했습니다!';
-    spawnParticles(40, '#f0c040');
-    setTimeout(() => spawnParticles(30, '#ff8800'), 300);
-    setTimeout(() => spawnParticles(20, '#ffee88'), 600);
-  } else {
-    overlay.classList.add('show','defeat');
-    text.textContent = 'DEFEAT';
-    const bt = state.towers.find(t=>t.team==='blue');
-    sub.textContent = !state.player.alive ? '챔피언이 쓰러졌습니다...' : '아군 타워가 파괴되었습니다...';
-    screenShake();
-    setTimeout(() => screenShake(), 300);
-  }
+  const ov=document.getElementById('game-over-overlay'), txt=document.getElementById('game-over-text'), sub=document.getElementById('game-over-sub');
+  if(victory){ov.classList.add('show','victory');txt.textContent='VICTORY';sub.textContent=!state.enemy.alive?'적 챔피언을 처치했습니다!':'적 타워를 파괴했습니다!';spawnParticles(40,'#f0c040');setTimeout(()=>spawnParticles(30,'#ff8800'),300);}
+  else{ov.classList.add('show','defeat');txt.textContent='DEFEAT';sub.textContent=!state.player.alive?'챔피언이 쓰러졌습니다...':'아군 타워가 파괴되었습니다...';screenShake();setTimeout(()=>screenShake(),300);}
 }
 
 // ============ SKILLS ============
 function executeSkill(caster, key, target) {
   const skill = ANNIE.skills[key];
-  if (caster.cooldowns[key] > 0 || caster.mp < skill.manaCost) return false;
+  if (caster.cooldowns[key]>0 || caster.mp<skill.manaCost) return false;
   caster.mp -= skill.manaCost;
   caster.cooldowns[key] = skill.cooldown;
-
   caster.passiveStacks++;
   let willStun = false;
-  if (caster.passiveStacks >= ANNIE.skills.passive.stacksNeeded) { willStun = true; caster.passiveStacks = 0; }
-
+  if (caster.passiveStacks >= ANNIE.skills.passive.stacksNeeded) { willStun=true; caster.passiveStacks=0; }
   const cl = caster.team==='blue'?'🔵':'🔴';
 
-  if (key === 'e') {
-    const s = Math.floor(skill.shield + skill.shieldApRatio * caster.ap);
-    caster.shield += s;
-    log(`${cl} ${caster.name} E 보호막 +${s}`, 'log-info');
+  if (key==='e') {
+    const s=Math.floor(skill.shield+skill.shieldApRatio*caster.ap);
+    caster.shield+=s;
+    log(`${cl} ${caster.name} E 보호막 +${s}`,'log-info');
     return true;
   }
-
-  if (!target || !target.alive || dist(caster.pos, target.pos) > skill.range) return false;
+  if (!target?.alive) return false;
+  const d = dist({x:caster.x,y:caster.y},{x:target.x,y:target.y});
+  if (d > skill.range) return false;
 
   const raw = skill.damage + caster.ap;
-  const dmg = calcDmg(raw, 'magic', target);
-  applyDmg(target, dmg);
-
+  const dmg = calcDmg(raw,'magic',target);
+  applyDmg(target,dmg);
   const tl = target.team==='blue'?'🔵':'🔴';
 
-  // ULT EFFECT
-  if (key === 'r') {
-    const color = caster.team === 'blue' ? 'rgba(100,0,255,0.4)' : 'rgba(255,0,100,0.4)';
-    ultFlash(color);
-    spawnParticles(25, caster.team==='blue' ? '#8844ff' : '#ff4488');
-    log(`🔥🧸 ${cl} ${caster.name} — 소환: 티버!! → ${tl}${target.name||target.type}에게 ${dmg} 피해!`, 'log-ult');
-
+  if (key==='r') {
+    ultFlash(caster.team==='blue'?'rgba(100,0,255,0.4)':'rgba(255,0,100,0.4)');
+    spawnParticles(25, caster.team==='blue'?'#8844ff':'#ff4488');
+    log(`🔥🧸 ${cl} 소환: 티버!! → ${tl}${target.name||target.type} ${dmg}`,'log-ult');
     if (!caster.tibbers) {
-      const tib = { type:'tibbers', team:caster.team, pos:target.pos, hp:300, maxHp:300, ad:40, alive:true, armor:0, mr:0, owner:caster };
-      caster.tibbers = tib;
-      state.tibbersList.push(tib);
+      const tib={type:'tibbers',team:caster.team,x:target.x,y:target.y,hp:300,maxHp:300,ad:40,alive:true,armor:0,mr:0};
+      caster.tibbers=tib; state.tibbersList.push(tib);
     }
   } else {
-    log(`${cl} ${caster.name} ${skill.key}(${skill.name}) → ${tl}${target.name||target.type}에게 ${dmg}`, 'log-dmg');
+    log(`${cl} ${caster.name} ${skill.key} → ${tl}${target.name||target.type} ${dmg}`,'log-dmg');
   }
 
-  if (willStun && target.type === 'champion') {
-    target.stunned = true;
-    log(`⚡ 파이로매니아! ${tl}${target.name} 스턴!`, 'log-kill');
-  }
-
-  if (key === 'q' && !target.alive) {
-    caster.mp = Math.min(caster.maxMp, caster.mp + skill.manaCost);
-    log(`💰 Q 처치 마나 회복!`, 'log-heal');
-  }
-
-  if (!target.alive) handleKill(caster, target);
+  if (willStun && target.type==='champion') { target.stunned=true; log(`⚡ 파이로매니아! ${tl}${target.name} 스턴!`,'log-kill'); }
+  if (key==='q' && !target.alive) { caster.mp=Math.min(caster.maxMp,caster.mp+skill.manaCost); log('💰 Q 처치 마나 회복!','log-heal'); }
+  if (!target.alive) handleKill(caster,target);
   return true;
 }
 
 function handleKill(killer, victim) {
-  const kl = killer.team==='blue'?'🔵':'🔴';
-  if (victim.type==='minion') { killer.gold += MINION_GOLD; log(`${kl} 미니언 처치 +${MINION_GOLD}G`,'log-kill'); }
-  else if (victim.type==='champion') { killer.gold += 300; log(`${kl} 챔피언 처치! +300G`,'log-kill'); }
+  const kl=killer.team==='blue'?'🔵':'🔴';
+  if(victim.type==='minion'){killer.gold+=MINION_GOLD;log(`${kl} 미니언 처치 +${MINION_GOLD}G`,'log-kill');}
+  else if(victim.type==='champion'){killer.gold+=300;log(`${kl} 챔피언 처치! +300G`,'log-kill');}
 }
 
 function autoAttack(atk, tgt) {
-  if (!tgt?.alive || dist(atk.pos, tgt.pos) > 2) return false;
-  const dmg = calcDmg(atk.ad, 'physical', tgt);
-  applyDmg(tgt, dmg);
-  const al = atk.team==='blue'?'🔵':'🔴', tl = tgt.team==='blue'?'🔵':'🔴';
-  log(`${al} ${atk.name||atk.type} → ${tl}${tgt.name||tgt.type} ${dmg}`, 'log-dmg');
-  if (!tgt.alive) handleKill(atk, tgt);
+  if(!tgt?.alive) return false;
+  const d=dist({x:atk.x,y:atk.y},{x:tgt.x,y:tgt.y});
+  if(d>2) return false;
+  const dmg=calcDmg(atk.ad,'physical',tgt);
+  applyDmg(tgt,dmg);
+  const al=atk.team==='blue'?'🔵':'🔴', tl=tgt.team==='blue'?'🔵':'🔴';
+  log(`${al} ${atk.name||atk.type} → ${tl}${tgt.name||tgt.type} ${dmg}`,'log-dmg');
+  if(!tgt.alive) handleKill(atk,tgt);
   return true;
 }
 
 function getEnemyTargets(unit) {
-  const et = unit.team==='blue'?'red':'blue';
-  let t = [];
-  const ec = unit.team==='blue'?state.enemy:state.player;
-  if (ec.alive) t.push(ec);
+  const et=unit.team==='blue'?'red':'blue'; let t=[];
+  const ec=unit.team==='blue'?state.enemy:state.player;
+  if(ec.alive)t.push(ec);
   state.minions.filter(m=>m.alive&&m.team===et).forEach(m=>t.push(m));
   state.towers.filter(tw=>tw.alive&&tw.team===et).forEach(tw=>t.push(tw));
   state.tibbersList.filter(tb=>tb.alive&&tb.team===et).forEach(tb=>t.push(tb));
   return t;
 }
-function getInRange(unit, range) { return getEnemyTargets(unit).filter(t=>dist(unit.pos,t.pos)<=range); }
-function targetLabel(t) {
-  if (t.type==='champion') return `${t.name} (${t.hp}HP)`;
-  if (t.type==='minion') return `미니언 (${t.hp}HP)`;
-  if (t.type==='tower') return `타워 (${t.hp}HP)`;
-  if (t.type==='tibbers') return `티버 (${t.hp}HP)`;
+function getInRange(unit, range) { return getEnemyTargets(unit).filter(t=>dist({x:unit.x,y:unit.y},{x:t.x,y:t.y})<=range); }
+function tgtLabel(t) {
+  if(t.type==='champion')return`${t.name} (${t.hp}HP)`;
+  if(t.type==='minion')return`미니언 (${t.hp}HP)`;
+  if(t.type==='tower')return`타워 (${t.hp}HP)`;
+  if(t.type==='tibbers')return`티버 (${t.hp}HP)`;
   return t.type;
 }
 
 // ============ PLAYER ACTIONS ============
-function playerMove(dir) {
-  const np = state.player.pos+dir;
-  if (np<0||np>=LANE_SIZE) return;
-  state.player.pos = np;
-  log(`🔵 이동 → ${np}`,'log-info');
+function playerMove(dx, dy) {
+  const nx=state.player.x+dx, ny=state.player.y+dy;
+  if(!isWalkable(nx,ny)) return;
+  // Check collision with towers
+  for(const tw of state.towers) if(tw.alive&&tw.x===nx&&tw.y===ny) return;
+  state.player.x=nx; state.player.y=ny;
+  state.moveMode=false;
+  log(`🔵 이동 → (${nx},${ny})`,'log-info');
   endPlayerTurn();
 }
-function playerAA() {
-  const ts = getInRange(state.player, 2);
-  if (!ts.length) { log('⚠️ 사거리 내 대상 없음','log-info'); render(); return; }
-  if (ts.length===1) { autoAttack(state.player, ts[0]); endPlayerTurn(); }
-  else showTargetSelect(ts, t=>{ autoAttack(state.player,t); endPlayerTurn(); });
+
+function enterMoveMode() {
+  state.moveMode = true;
+  render();
 }
+function cancelMoveMode() {
+  state.moveMode = false;
+  render();
+}
+
+function playerAA() {
+  const ts=getInRange(state.player,2);
+  if(!ts.length){log('⚠️ 사거리 내 대상 없음','log-info');render();return;}
+  if(ts.length===1){autoAttack(state.player,ts[0]);endPlayerTurn();}
+  else showTargetSelect(ts,t=>{autoAttack(state.player,t);endPlayerTurn();});
+}
+
 function playerSkill(key) {
-  const p = state.player, s = ANNIE.skills[key];
-  if (p.cooldowns[key]>0) return;
-  if (p.mp<s.manaCost) { log('⚠️ 마나 부족!','log-info'); render(); return; }
-  if (s.type==='self') { executeSkill(p,key,null); endPlayerTurn(); }
-  else {
-    const ts = getInRange(p, s.range);
-    if (!ts.length) { log('⚠️ 사거리 내 대상 없음','log-info'); render(); return; }
-    if (ts.length===1) { executeSkill(p,key,ts[0]); endPlayerTurn(); }
-    else showTargetSelect(ts, t=>{ executeSkill(p,key,t); endPlayerTurn(); });
+  const p=state.player, s=ANNIE.skills[key];
+  if(p.cooldowns[key]>0)return;
+  if(p.mp<s.manaCost){log('⚠️ 마나 부족!','log-info');render();return;}
+  if(s.type==='self'){executeSkill(p,key,null);endPlayerTurn();}
+  else{
+    const ts=getInRange(p,s.range);
+    if(!ts.length){log('⚠️ 사거리 내 대상 없음','log-info');render();return;}
+    if(ts.length===1){executeSkill(p,key,ts[0]);endPlayerTurn();}
+    else showTargetSelect(ts,t=>{executeSkill(p,key,t);endPlayerTurn();});
   }
 }
 
 function showTargetSelect(targets, cb) {
-  state.phase = 'target';
-  const c = document.getElementById('target-buttons'); c.innerHTML = '';
-  const div = document.getElementById('target-select'); div.style.display = 'block';
-  targets.forEach(t => {
-    const b = document.createElement('button'); b.textContent = targetLabel(t);
-    b.onclick = () => { div.style.display='none'; state.phase='action'; cb(t); };
-    c.appendChild(b);
-  });
-  const cancel = document.createElement('button'); cancel.textContent = '취소'; cancel.style.borderColor='#ff4444';
-  cancel.onclick = () => { div.style.display='none'; state.phase='action'; render(); };
+  state.phase='target';
+  const c=document.getElementById('target-buttons');c.innerHTML='';
+  const div=document.getElementById('target-select');div.style.display='block';
+  targets.forEach(t=>{const b=document.createElement('button');b.textContent=tgtLabel(t);b.onclick=()=>{div.style.display='none';state.phase='action';cb(t);};c.appendChild(b);});
+  const cancel=document.createElement('button');cancel.textContent='취소';cancel.style.borderColor='#ff4444';
+  cancel.onclick=()=>{div.style.display='none';state.phase='action';render();};
   c.appendChild(cancel);
   render();
 }
 
 // ============ TURN FLOW ============
 function endPlayerTurn() {
-  document.getElementById('target-select').style.display = 'none';
-  if (checkGameOver()) { render(); return; }
-  aiTurn(); if (checkGameOver()) { render(); return; }
-  minionTurns(); if (checkGameOver()) { render(); return; }
-  towerAttacks(); if (checkGameOver()) { render(); return; }
-  tibbersAI(); if (checkGameOver()) { render(); return; }
+  document.getElementById('target-select').style.display='none';
+  state.moveMode=false;
+  if(checkGameOver()){render();return;}
+  aiTurn(); if(checkGameOver()){render();return;}
+  minionTurns(); if(checkGameOver()){render();return;}
+  towerAttacks(); if(checkGameOver()){render();return;}
+  tibbersAI(); if(checkGameOver()){render();return;}
 
-  for (let k of ['q','w','e','r']) { if(state.player.cooldowns[k]>0)state.player.cooldowns[k]--; if(state.enemy.cooldowns[k]>0)state.enemy.cooldowns[k]--; }
-  state.player.stunned = false; state.enemy.stunned = false;
-  state.player.mp = Math.min(state.player.maxMp, state.player.mp+10);
-  state.enemy.mp = Math.min(state.enemy.maxMp, state.enemy.mp+10);
+  for(let k of['q','w','e','r']){if(state.player.cooldowns[k]>0)state.player.cooldowns[k]--;if(state.enemy.cooldowns[k]>0)state.enemy.cooldowns[k]--;}
+  state.player.stunned=false;state.enemy.stunned=false;
+  state.player.mp=Math.min(state.player.maxMp,state.player.mp+10);
+  state.enemy.mp=Math.min(state.enemy.maxMp,state.enemy.mp+10);
 
   state.turn++;
   spawnMinions();
-  state.minions = state.minions.filter(m=>m.alive);
-  state.tibbersList = state.tibbersList.filter(t=>t.alive);
-  if (state.player.tibbers&&!state.player.tibbers.alive) state.player.tibbers=null;
-  if (state.enemy.tibbers&&!state.enemy.tibbers.alive) state.enemy.tibbers=null;
+  state.minions=state.minions.filter(m=>m.alive);
+  state.tibbersList=state.tibbersList.filter(t=>t.alive);
+  if(state.player.tibbers&&!state.player.tibbers.alive)state.player.tibbers=null;
+  if(state.enemy.tibbers&&!state.enemy.tibbers.alive)state.enemy.tibbers=null;
 
   log(`━━━ 턴 ${state.turn} ━━━`,'log-turn');
   render();
@@ -449,139 +378,191 @@ function endPlayerTurn() {
 
 // ============ AI ============
 function aiTurn() {
-  const ai = state.enemy;
-  if (!ai.alive) return;
-  if (ai.stunned) { log('🔴 스턴! 턴 스킵','log-info'); return; }
-  const p = state.player;
+  const ai=state.enemy;
+  if(!ai.alive)return;
+  if(ai.stunned){log('🔴 스턴! 턴 스킵','log-info');return;}
+  const p=state.player;
 
-  if (ai.cooldowns.r===0 && ai.mp>=ANNIE.skills.r.manaCost && p.alive && dist(ai.pos,p.pos)<=ANNIE.skills.r.range) { executeSkill(ai,'r',p); return; }
-  if (ai.cooldowns.q===0 && ai.mp>=ANNIE.skills.q.manaCost) {
-    const ms = state.minions.filter(m=>m.alive&&m.team==='blue'&&dist(ai.pos,m.pos)<=3);
-    const lh = ms.find(m=>m.hp<=80);
-    if (lh) { executeSkill(ai,'q',lh); return; }
-    if (p.alive && dist(ai.pos,p.pos)<=3) { executeSkill(ai,'q',p); return; }
+  if(ai.cooldowns.r===0&&ai.mp>=100&&p.alive&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){executeSkill(ai,'r',p);return;}
+  if(ai.cooldowns.q===0&&ai.mp>=60){
+    const ms=state.minions.filter(m=>m.alive&&m.team==='blue'&&dist({x:ai.x,y:ai.y},{x:m.x,y:m.y})<=3);
+    const lh=ms.find(m=>m.hp<=80);
+    if(lh){executeSkill(ai,'q',lh);return;}
+    if(p.alive&&dist({x:ai.x,y:ai.y},{x:p.x,y:p.y})<=3){executeSkill(ai,'q',p);return;}
   }
-  if (ai.cooldowns.w===0 && ai.mp>=ANNIE.skills.w.manaCost) { const ts=getInRange(ai,2); if(ts.length) { executeSkill(ai,'w',ts[0]); return; } }
-  if (ai.cooldowns.e===0 && ai.shield===0 && ai.mp>=ANNIE.skills.e.manaCost) { executeSkill(ai,'e',null); return; }
+  if(ai.cooldowns.w===0&&ai.mp>=70){const ts=getInRange(ai,2);if(ts.length){executeSkill(ai,'w',ts[0]);return;}}
+  if(ai.cooldowns.e===0&&ai.shield===0&&ai.mp>=40){executeSkill(ai,'e',null);return;}
 
-  const aa = getInRange(ai, 2);
-  if (aa.length) { const lm=aa.find(t=>t.type==='minion'&&t.hp<=ai.ad); autoAttack(ai, lm||aa.find(t=>t.type==='champion')||aa[0]); return; }
-  if (ai.pos > 6) { ai.pos--; log(`🔴 이동 → ${ai.pos}`,'log-info'); }
+  const aa=getInRange(ai,2);
+  if(aa.length){const lm=aa.find(t=>t.type==='minion'&&t.hp<=ai.ad);autoAttack(ai,lm||aa.find(t=>t.type==='champion')||aa[0]);return;}
+
+  // Move toward player or center
+  const tx=p.alive?p.x:7, ty=p.alive?p.y:MID_ROW;
+  const dx=Math.sign(tx-ai.x), dy=Math.sign(ty-ai.y);
+  // Try horizontal first, then vertical
+  if(dx!==0&&isWalkable(ai.x+dx,ai.y)){ai.x+=dx;log(`🔴 이동 → (${ai.x},${ai.y})`,'log-info');return;}
+  if(dy!==0&&isWalkable(ai.x,ai.y+dy)){ai.y+=dy;log(`🔴 이동 → (${ai.x},${ai.y})`,'log-info');}
 }
 
 function minionTurns() {
-  for (const m of state.minions) {
-    if (!m.alive) continue;
-    const et = m.team==='blue'?'red':'blue';
-    const enemies = [...state.minions.filter(e=>e.alive&&e.team===et)];
-    const ec = m.team==='blue'?state.enemy:state.player;
-    if (ec.alive) enemies.push(ec);
+  for(const m of state.minions){
+    if(!m.alive)continue;
+    const et=m.team==='blue'?'red':'blue';
+    const enemies=[...state.minions.filter(e=>e.alive&&e.team===et)];
+    const ec=m.team==='blue'?state.enemy:state.player;
+    if(ec.alive)enemies.push(ec);
     state.towers.filter(t=>t.alive&&t.team===et).forEach(t=>enemies.push(t));
-    let closest=null, cd=999;
-    for (const e of enemies) { const d=dist(m.pos,e.pos); if(d<cd){cd=d;closest=e;} }
-    if (closest&&cd<=1) { const dmg=calcDmg(m.ad,'physical',closest); applyDmg(closest,dmg); if(!closest.alive&&closest.type==='champion') log('💀 미니언이 챔피언 처치!','log-kill'); }
-    else { const d=m.team==='blue'?1:-1; const np=m.pos+d; if(np>=0&&np<LANE_SIZE) m.pos=np; }
+    let closest=null,cd=999;
+    for(const e of enemies){const d=dist({x:m.x,y:m.y},{x:e.x,y:e.y});if(d<cd){cd=d;closest=e;}}
+    if(closest&&cd<=1){
+      const dmg=calcDmg(m.ad,'physical',closest);applyDmg(closest,dmg);
+      if(!closest.alive&&closest.type==='champion')log('💀 미니언이 챔피언 처치!','log-kill');
+    } else if(closest){
+      // Move toward closest enemy along lane
+      const dx=Math.sign(closest.x-m.x), dy=Math.sign(closest.y-m.y);
+      if(dx!==0&&isWalkable(m.x+dx,m.y)){m.x+=dx;}
+      else if(dy!==0&&isWalkable(m.x,m.y+dy)){m.y+=dy;}
+    }
   }
 }
 
 function towerAttacks() {
-  for (const tw of state.towers) {
-    if (!tw.alive) continue;
-    const et = tw.team==='blue'?'red':'blue';
-    const ir = [];
-    state.minions.filter(m=>m.alive&&m.team===et&&dist(tw.pos,m.pos)<=tw.range).forEach(m=>ir.push(m));
-    const ec = tw.team==='blue'?state.enemy:state.player;
-    if (ec.alive&&dist(tw.pos,ec.pos)<=tw.range) ir.push(ec);
-    state.tibbersList.filter(t=>t.alive&&t.team===et&&dist(tw.pos,t.pos)<=tw.range).forEach(t=>ir.push(t));
-    if (ir.length) {
-      const tgt = ir.find(t=>t.type==='minion')||ir[0];
-      const dmg = calcDmg(tw.ad,'physical',tgt);
-      applyDmg(tgt, dmg);
-      const tl = tw.team==='blue'?'🔵':'🔴';
+  for(const tw of state.towers){
+    if(!tw.alive)continue;
+    const et=tw.team==='blue'?'red':'blue';
+    const ir=[];
+    state.minions.filter(m=>m.alive&&m.team===et&&dist({x:tw.x,y:tw.y},{x:m.x,y:m.y})<=tw.range).forEach(m=>ir.push(m));
+    const ec=tw.team==='blue'?state.enemy:state.player;
+    if(ec.alive&&dist({x:tw.x,y:tw.y},{x:ec.x,y:ec.y})<=tw.range)ir.push(ec);
+    state.tibbersList.filter(t=>t.alive&&t.team===et&&dist({x:tw.x,y:tw.y},{x:t.x,y:t.y})<=tw.range).forEach(t=>ir.push(t));
+    if(ir.length){
+      const tgt=ir.find(t=>t.type==='minion')||ir[0];
+      const dmg=calcDmg(tw.ad,'physical',tgt);applyDmg(tgt,dmg);
+      const tl=tw.team==='blue'?'🔵':'🔴';
       log(`🏰${tl} 타워 → ${tgt.name||tgt.type} ${dmg}`,'log-dmg');
     }
   }
 }
 
 function tibbersAI() {
-  for (const tib of state.tibbersList) {
-    if (!tib.alive) continue;
-    const enemies = getEnemyTargets(tib);
-    let closest=null, cd=999;
-    for (const e of enemies) { const d=dist(tib.pos,e.pos); if(d<cd){cd=d;closest=e;} }
-    if (closest&&cd<=1) { const dmg=calcDmg(tib.ad,'physical',closest); applyDmg(closest,dmg); log(`🧸 티버 → ${closest.name||closest.type} ${dmg}`,'log-dmg'); }
-    else if (closest) { tib.pos += tib.pos<closest.pos?1:-1; }
+  for(const tib of state.tibbersList){
+    if(!tib.alive)continue;
+    const enemies=getEnemyTargets(tib);
+    let closest=null,cd=999;
+    for(const e of enemies){const d=dist({x:tib.x,y:tib.y},{x:e.x,y:e.y});if(d<cd){cd=d;closest=e;}}
+    if(closest&&cd<=1){const dmg=calcDmg(tib.ad,'physical',closest);applyDmg(closest,dmg);log(`🧸 티버 → ${closest.name||closest.type} ${dmg}`,'log-dmg');}
+    else if(closest){const dx=Math.sign(closest.x-tib.x),dy=Math.sign(closest.y-tib.y);if(dx!==0&&isWalkable(tib.x+dx,tib.y))tib.x+=dx;else if(dy!==0&&isWalkable(tib.x,tib.y+dy))tib.y+=dy;}
   }
 }
 
-// ============ GAME OVER ============
 function checkGameOver() {
-  const bt = state.towers.find(t=>t.team==='blue'), rt = state.towers.find(t=>t.team==='red');
-  if (!bt.alive || !state.player.alive) { state.gameOver=true; showGameOver(false); return true; }
-  if (!rt.alive || !state.enemy.alive) { state.gameOver=true; showGameOver(true); return true; }
+  const bt=state.towers.find(t=>t.team==='blue'),rt=state.towers.find(t=>t.team==='red');
+  if(!bt.alive||!state.player.alive){state.gameOver=true;showGameOver(false);return true;}
+  if(!rt.alive||!state.enemy.alive){state.gameOver=true;showGameOver(true);return true;}
   return false;
 }
 
 // ============ RENDER ============
-function render() { renderLane(); renderStats(); renderActions(); renderLog(); }
+function render() { renderMap(); renderStats(); renderActions(); renderLog(); }
 
-function renderLane() {
-  const el = document.getElementById('lane-display');
-  let lane = []; for(let i=0;i<LANE_SIZE;i++) lane[i]=[];
-  for (const t of state.towers) if(t.alive) lane[t.pos].push(t.team==='blue'?'🏰🔵':'🏰🔴');
-  for (const m of state.minions) if(m.alive) lane[m.pos].push(m.team==='blue'?'👤🔵':'👤🔴');
-  for (const t of state.tibbersList) if(t.alive) lane[t.pos].push(t.team==='blue'?'🧸🔵':'🧸🔴');
-  if (state.player.alive) lane[state.player.pos].push('🔵Annie');
-  if (state.enemy.alive) lane[state.enemy.pos].push('🔴Annie');
+function renderMap() {
+  const mapEl = document.getElementById('map');
+  // Build unit lookup: key "x,y" -> array of units
+  const units = {};
+  const addUnit = (x,y,icon,sub,hp,maxHp) => {
+    const k=x+','+y;
+    if(!units[k])units[k]=[];
+    units[k].push({icon,sub,hp,maxHp});
+  };
+  for(const tw of state.towers) if(tw.alive) addUnit(tw.x,tw.y, tw.team==='blue'?'🏰':'🏰', tw.team==='blue'?'🔵':'🔴', tw.hp, tw.maxHp);
+  for(const m of state.minions) if(m.alive) addUnit(m.x,m.y, m.team==='blue'?'👤':'👤', m.team==='blue'?'🔵':'🔴', m.hp, m.maxHp);
+  for(const t of state.tibbersList) if(t.alive) addUnit(t.x,t.y,'🧸',t.team==='blue'?'🔵':'🔴',t.hp,t.maxHp);
+  if(state.player.alive) addUnit(state.player.x,state.player.y,'😈','🔵',state.player.hp,state.player.maxHp);
+  if(state.enemy.alive) addUnit(state.enemy.x,state.enemy.y,'😈','🔴',state.enemy.hp,state.enemy.maxHp);
 
-  let header='  ', units='  ';
-  for(let i=0;i<LANE_SIZE;i++) header += String(i).padStart(2,' ').padEnd(8);
-  for(let i=0;i<LANE_SIZE;i++) { const c=lane[i].length?lane[i].join(' '):'·'; units+=c.padEnd(6)+'  '; }
-  el.textContent = `턴 ${state.turn}\n${header}\n${units}`;
+  // Moveable cells for move mode
+  const moveCells = new Set();
+  if(state.moveMode) {
+    const dirs = [[0,-1],[0,1],[-1,0],[1,0]];
+    for(const [dx,dy] of dirs) {
+      const nx=state.player.x+dx, ny=state.player.y+dy;
+      if(isWalkable(nx,ny)) {
+        let blocked=false;
+        for(const tw of state.towers) if(tw.alive&&tw.x===nx&&tw.y===ny) blocked=true;
+        if(!blocked) moveCells.add(nx+','+ny);
+      }
+    }
+  }
+
+  let html='<table>';
+  for(let y=0;y<ROWS;y++){
+    html+='<tr>';
+    for(let x=0;x<COLS;x++){
+      const tile=MAP_TEMPLATE[y][x];
+      let cls = tile===0?'wall':tile===2?'grass':'lane';
+      // Tower cells
+      for(const tw of state.towers) if(tw.alive&&tw.x===x&&tw.y===y) cls = tw.team==='blue'?'tower-blue':'tower-red';
+
+      const k=x+','+y;
+      const isMove = moveCells.has(k);
+      if(isMove) cls+=' highlight';
+
+      let content = '';
+      if(units[k]) {
+        // Show first unit (stack if multiple)
+        const u = units[k];
+        if(u.length===1) {
+          content = `<span class="unit">${u[0].icon}</span><span class="sub">${u[0].sub}</span>`;
+        } else {
+          content = `<span class="unit">${u.map(a=>a.icon).join('')}</span><span class="sub">${u.map(a=>a.sub).join('')}</span>`;
+        }
+      }
+
+      const onclick = isMove ? `onclick="playerMove(${x-state.player.x},${y-state.player.y})"` : '';
+      html+=`<td class="${cls}" ${onclick}>${content}</td>`;
+    }
+    html+='</tr>';
+  }
+  html+='</table>';
+  mapEl.innerHTML = html;
 }
 
 function renderStats() {
   const renderPanel = (champ, label, id) => {
-    const hpPct = Math.max(0, (champ.hp/champ.maxHp)*100);
-    const mpPct = Math.max(0, (champ.mp/champ.maxMp)*100);
-    const needed = ANNIE.skills.passive.stacksNeeded;
-    let stacks = '';
-    for (let i=0;i<needed;i++) {
-      const cls = i<champ.passiveStacks ? (champ.passiveStacks>=needed-1?'stack ready':'stack filled') : 'stack';
-      stacks += `<span class="${cls}"></span>`;
-    }
-    const skillBadges = ['q','w','e','r'].map(k => {
-      const s = ANNIE.skills[k];
-      const cd = champ.cooldowns[k];
-      if (cd>0) return `<span class="skill-badge on-cd">${s.key} (${cd})</span>`;
-      if (champ.mp<s.manaCost) return `<span class="skill-badge on-cd">${s.key}</span>`;
-      return `<span class="skill-badge ready">${s.key}</span>`;
-    }).join('');
-
-    document.getElementById(id).innerHTML = `
+    const hpPct=Math.max(0,(champ.hp/champ.maxHp)*100);
+    const mpPct=Math.max(0,(champ.mp/champ.maxMp)*100);
+    const needed=ANNIE.skills.passive.stacksNeeded;
+    let stacks='';
+    for(let i=0;i<needed;i++){const c=i<champ.passiveStacks?(champ.passiveStacks>=needed-1?'stack ready':'stack filled'):'stack';stacks+=`<span class="${c}"></span>`;}
+    const badges=['q','w','e','r'].map(k=>{const s=ANNIE.skills[k];const cd=champ.cooldowns[k];if(cd>0)return`<span class="skill-badge on-cd">${s.key}(${cd})</span>`;if(champ.mp<s.manaCost)return`<span class="skill-badge on-cd">${s.key}</span>`;return`<span class="skill-badge ready">${s.key}</span>`;}).join('');
+    document.getElementById(id).innerHTML=`
       <h3>${label}</h3>
-      <div class="bar-container bar-hp"><div class="bar-fill" style="width:${hpPct}%"></div><div class="bar-label">❤️ ${champ.hp} / ${champ.maxHp}${champ.shield>0?' 🛡️'+champ.shield:''}</div></div>
-      <div class="bar-container bar-mp"><div class="bar-fill" style="width:${mpPct}%"></div><div class="bar-label">💧 ${champ.mp} / ${champ.maxMp}</div></div>
+      <div class="bar-container bar-hp"><div class="bar-fill" style="width:${hpPct}%"></div><div class="bar-label">❤️ ${champ.hp}/${champ.maxHp}${champ.shield>0?' 🛡️'+champ.shield:''}</div></div>
+      <div class="bar-container bar-mp"><div class="bar-fill" style="width:${mpPct}%"></div><div class="bar-label">💧 ${champ.mp}/${champ.maxMp}</div></div>
       <div class="passive-bar">🔥 ${stacks}</div>
-      <div class="skill-row">${skillBadges}</div>
-      ${champ.stunned?'<div style="color:#ff44ff;margin-top:4px">⚡ 스턴!</div>':''}
+      <div class="skill-row">${badges}</div>
+      ${champ.stunned?'<div style="color:#ff44ff;margin-top:3px;font-size:11px">⚡ 스턴!</div>':''}
     `;
   };
-  renderPanel(state.player, '🔵 Annie (나)', 'player-stats');
-  renderPanel(state.enemy, '🔴 Annie (AI)', 'enemy-stats');
+  renderPanel(state.player,'🔵 Annie (나)','player-stats');
+  renderPanel(state.enemy,'🔴 Annie (AI)','enemy-stats');
 }
 
 function renderActions() {
-  const el = document.getElementById('actions');
-  const p = state.player;
-  if (state.gameOver||!p.alive) { el.innerHTML=''; return; }
-  if (state.phase==='target') { el.innerHTML='<em>타겟을 선택하세요...</em>'; return; }
-  if (p.stunned) { el.innerHTML='<button onclick="endPlayerTurn()">⚡ 스턴! (턴 넘기기)</button>'; return; }
+  const el=document.getElementById('actions');
+  const p=state.player;
+  if(state.gameOver||!p.alive){el.innerHTML='';return;}
+  if(state.phase==='target'){el.innerHTML='<em>타겟을 선택하세요...</em>';return;}
+  if(p.stunned){el.innerHTML='<button onclick="endPlayerTurn()">⚡ 스턴! (턴 넘기기)</button>';return;}
 
-  const can = k => p.cooldowns[k]===0 && p.mp>=ANNIE.skills[k].manaCost;
-  el.innerHTML = `
-    <button class="move" onclick="playerMove(-1)" ${p.pos<=0?'disabled':''}>← 이동</button>
-    <button class="move" onclick="playerMove(1)" ${p.pos>=LANE_SIZE-1?'disabled':''}>이동 →</button>
+  if(state.moveMode) {
+    el.innerHTML='<button class="move" onclick="cancelMoveMode()">❌ 이동 취소</button>';
+    return;
+  }
+
+  const can=k=>p.cooldowns[k]===0&&p.mp>=ANNIE.skills[k].manaCost;
+  el.innerHTML=`
+    <button class="move" onclick="enterMoveMode()">🚶 이동</button>
     <button class="attack" onclick="playerAA()">⚔️ 평타</button>
     <button class="skill-q" onclick="playerSkill('q')" ${!can('q')?'disabled':''}>Q 붕괴</button>
     <button class="skill-w" onclick="playerSkill('w')" ${!can('w')?'disabled':''}>W 소각</button>
@@ -591,10 +572,10 @@ function renderActions() {
 }
 
 function renderLog() {
-  const el = document.getElementById('log');
-  const recent = state.logs.slice(-50);
-  el.innerHTML = recent.map(l=>`<div class="${l.cls}">${l.msg}</div>`).join('');
-  el.scrollTop = el.scrollHeight;
+  const el=document.getElementById('log');
+  const recent=state.logs.slice(-50);
+  el.innerHTML=recent.map(l=>`<div class="${l.cls}">${l.msg}</div>`).join('');
+  el.scrollTop=el.scrollHeight;
 }
 
 initGame();

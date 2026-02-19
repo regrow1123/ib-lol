@@ -766,7 +766,22 @@ function renderMap(){
     if(state.targetMode.type==='move'){
       const dirs=[[0,-1],[0,1],[-1,0],[1,0]];
       for(const[dx,dy]of dirs){const nx=p.x+dx,ny=p.y+dy;if(isWalkable(nx,ny))moveCells.add(nx+','+ny);}
+    }else if(state.targetMode.type==='attack'){
+      // Auto-attack: only cells with visible units
+      const range=state.targetMode.range||2;
+      for(let y=1;y<ROWS-1;y++)for(let x=1;x<COLS-1;x++){
+        if(dist({x:p.x,y:p.y},{x,y})>range)continue;
+        const hasMinion=state.minions.some(m=>m.alive&&m.x===x&&m.y===y);
+        const hasBuff=state.buffs.some(b=>b.alive&&b.x===x&&b.y===y);
+        const hasEpic=state.epics.some(e=>e.alive&&e.x===x&&e.y===y);
+        const hasTib=state.tibbersList.some(t=>t.alive&&t.x===x&&t.y===y&&t.team!=='blue');
+        // Enemy champion visible on reveal turn
+        const isReveal=state.lastRevealTurn===state.turn;
+        const hasEnemy=isReveal&&state.enemy.alive&&state.enemy.x===x&&state.enemy.y===y;
+        if(hasMinion||hasBuff||hasEpic||hasTib||hasEnemy)targetCells.add(x+','+y);
+      }
     }else{
+      // Skills: any cell in range (can target empty cells)
       const range=state.targetMode.range||3;
       for(let y=1;y<ROWS-1;y++)for(let x=1;x<COLS-1;x++){
         if(dist({x:p.x,y:p.y},{x,y})<=range)targetCells.add(x+','+y);
